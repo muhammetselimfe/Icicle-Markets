@@ -1,0 +1,32 @@
+<svg width="200" height="60" viewBox="0 0 200 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icicle Icon -->
+  <g>
+    <!-- Outer glow -->
+    <path d="M30 10 L42 50 L18 50 Z" fill="#8be4ff" opacity="0.3" filter="blur(4px)"/>
+    
+    <!-- Main icicle -->
+    <path d="M30 10 L42 50 L18 50 Z" fill="url(#icicleGradient)" stroke="#4db8ff" stroke-width="2"/>
+    
+    <!-- Inner highlight -->
+    <path d="M30 10 L36 35 L24 35 Z" fill="#b8f0ff" opacity="0.6"/>
+    
+    <!-- Ice crystals -->
+    <circle cx="30" cy="18" r="2" fill="#ffffff" opacity="0.9"/>
+    <circle cx="27" cy="25" r="1.5" fill="#ffffff" opacity="0.7"/>
+    <circle cx="33" cy="28" r="1.5" fill="#ffffff" opacity="0.7"/>
+    <circle cx="30" cy="35" r="1" fill="#ffffff" opacity="0.6"/>
+  </g>
+  
+  <!-- Brand Name -->
+  <text x="55" y="35" font-family="'Press Start 2P', monospace" font-size="20" fill="#8be4ff" letter-spacing="2">ICICLE</text>
+  <text x="55" y="48" font-family="'VT323', monospace" font-size="10" fill="#4db8ff" letter-spacing="1">AVALANCHE MARKETS</text>
+  
+  <!-- Gradients -->
+  <defs>
+    <linearGradient id="icicleGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8be4ff;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#4db8ff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a8fcc;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

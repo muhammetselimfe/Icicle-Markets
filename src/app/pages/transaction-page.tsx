@@ -1,0 +1,341 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Copy, Check, CheckCircle, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { useAccount } from 'wagmi';
+import { api } from '@/app/services/api';
+import { getRelativeTime } from '@/app/utils/time';
+import { getAddressName, isProtocol, isToken } from '@/app/data/known-addresses';
+import type { Transaction } from '@/app/types/api';
+
+function Skeleton({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse bg-[#4db8ff]/20 ${className}`} />;
+}
+
+function formatTokenAmount(value: string, decimals: number): string {
+  const amount = parseFloat(value) / Math.pow(10, decimals);
+  if (amount === 0) return '0';
+  if (amount < 0.000001) return '<0.000001';
+  if (amount < 0.01) return amount.toFixed(6);
+  if (amount < 1) return amount.toFixed(4);
+  if (amount < 1000) return amount.toFixed(2);
+  return amount.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+// Helper functions using shared known-addresses
+function getProtocolName(address: string | null): string | null {
+  if (!address || !isProtocol(address)) return null;
+  return getAddressName(address);
+}
+
+function getTokenName(address: string | null): string | null {
+  if (!address || !isToken(address)) return null;
+  return getAddressName(address);
+}
+
+function getAddressLabel(address: string | null): string | null {
+  return getAddressName(address);
+}
+
+export function TransactionPage() {
+  const { hash } = useParams<{ hash: string }>();
+  const navigate = useNavigate();
+  const { address: connectedAddress } = useAccount();
+  const [tx, setTx] = useState<Transaction | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+
+  useEffect(() => {
+    async function fetchTransaction() {
+      if (!hash) return;
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await api.getTransaction(hash);
+        setTx(response.data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch transaction');
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchTransaction();
+  }, [hash]);
+
+  const copyHash = () => {
+    if (tx) {
+      navigator.clipboard.writeText(tx.hash);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-6 py-8 max-w-2xl">
+        <Skeleton className="h-6 w-24 mb-6" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (error || !tx) {
+    return (
+      <div className="container mx-auto px-6 py-8 max-w-2xl">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[#8be4ff] hover:text-white mb-6">
+          <ArrowLeft className="w-4 h-4" />
+          <span style={{ fontFamily: "'VT323', monospace", fontSize: '18px' }}>BACK</span>
+        </button>
+        <div className="border-2 border-[#ff4d4d] bg-[#0f1535] p-8 text-center">
+          <XCircle className="w-10 h-10 text-[#ff4d4d] mx-auto mb-3" />
+          <p className="text-[#ff4d4d]" style={{ fontFamily: "'VT323', monospace", fontSize: '18px' }}>
+            {error || 'Transaction not found'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const txFee = (tx.gas_used * tx.gas_price) / 1e18;
+
+  // Use connected wallet to determine user perspective, fallback to tx.from
+  const userAddress = (connectedAddress || tx.from).toLowerCase();
+  const isUserSender = tx.from.toLowerCase() === userAddress;
+  const isUserReceiver = tx.to?.toLowerCase() === userAddress;
+
+  // Determine what the user sent and received
+  let userSentAvax = 0;
+  let userReceivedAvax = 0;
+
+  if (tx.value !== '0') {
+    const avaxAmount = parseFloat(tx.value) / 1e18;
+    if (isUserSender) {
+      userSentAvax = avaxAmount;
+    }
+    if (isUserReceiver) {
+      userReceivedAvax = avaxAmount;
+    }
+  }
+
+  let userSentToken: { symbol: string; amount: string; decimals: number } | null = null;
+  let userReceivedToken: { symbol: string; amount: string; decimals: number } | null = null;
+
+  if (tx.token_transfers && tx.token_transfers.length > 0) {
+    // Find first token user sent (if any)
+    const sent = tx.token_transfers.find(t => t.from.toLowerCase() === userAddress);
+    if (sent) {
+      userSentToken = { symbol: sent.symbol || 'TOKEN', amount: sent.value, decimals: sent.decimals };
+    }
+
+    // Find last token user received
+    const received = tx.token_transfers.filter(t => t.to.toLowerCase() === userAddress);
+    if (received.length > 0) {
+      const last = received[received.length - 1];
+      userReceivedToken = { symbol: last.symbol || 'TOKEN', amount: last.value, decimals: last.decimals };
+    }
+  }
+
+  // Determine transaction type
+  const isApprove = tx.approvals && tx.approvals.length > 0;
+  const isSwap = (userSentAvax > 0 || userSentToken) && (userReceivedAvax > 0 || userReceivedToken);
+  const isSend = (userSentAvax > 0 || userSentToken) && !userReceivedAvax && !userReceivedToken && !isApprove;
+  const isReceive = !userSentAvax && !userSentToken && (userReceivedAvax > 0 || userReceivedToken) && !isApprove;
+  const isContract = tx.value === '0' && !userSentToken && !userReceivedToken && !isApprove;
+
+  return (
+    <div className="container mx-auto px-6 py-8 max-w-2xl">
+      {/* Back */}
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-[#8be4ff] hover:text-white mb-6">
+        <ArrowLeft className="w-4 h-4" />
+        <span style={{ fontFamily: "'VT323', monospace", fontSize: '18px' }}>BACK</span>
+      </button>
+
+      <div className="border-2 border-[#8be4ff] bg-[#0f1535]">
+        {/* Status Header */}
+        <div className={`px-4 py-3 flex items-center justify-between ${tx.success ? 'bg-[#4dff88]/10' : 'bg-[#ff4d4d]/10'}`}>
+          <div className="flex items-center gap-2">
+            {tx.success ? <CheckCircle className="w-6 h-6 text-[#4dff88]" /> : <XCircle className="w-6 h-6 text-[#ff4d4d]" />}
+            <span className={tx.success ? 'text-[#4dff88]' : 'text-[#ff4d4d]'} style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '12px' }}>
+              {tx.success ? 'SUCCESS' : 'FAILED'}
+            </span>
+          </div>
+          <span className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}>
+            {getRelativeTime(tx.block_time)}
+          </span>
+        </div>
+
+        <div className="p-5">
+          {/* Main Action Card */}
+          {isSwap && (
+            <div className="border-2 border-[#8be4ff] bg-[#0a0e27] p-5 mb-5">
+              <div className="text-center mb-5">
+                <span className="text-[#8be4ff]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>SWAP</span>
+              </div>
+              <div className="flex items-center justify-center gap-6">
+                {/* Sent */}
+                <div className="text-center">
+                  <div className="text-[#ff4d4d]" style={{ fontFamily: "'VT323', monospace", fontSize: '36px' }}>
+                    {userSentAvax > 0 ? userSentAvax.toFixed(4) : userSentToken ? formatTokenAmount(userSentToken.amount, userSentToken.decimals) : '0'}
+                  </div>
+                  <div className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '24px' }}>
+                    {userSentAvax > 0 ? 'AVAX' : userSentToken?.symbol || ''}
+                  </div>
+                </div>
+
+                <ArrowRight className="w-10 h-10 text-[#8be4ff]" />
+
+                {/* Received */}
+                <div className="text-center">
+                  <div className="text-[#4dff88]" style={{ fontFamily: "'VT323', monospace", fontSize: '36px' }}>
+                    {userReceivedAvax > 0 ? userReceivedAvax.toFixed(4) : userReceivedToken ? formatTokenAmount(userReceivedToken.amount, userReceivedToken.decimals) : '0'}
+                  </div>
+                  <div className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '24px' }}>
+                    {userReceivedAvax > 0 ? 'AVAX' : userReceivedToken?.symbol || ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isSend && (
+            <div className="border-2 border-[#ff4d4d]/50 bg-[#0a0e27] p-6 mb-5">
+              <div className="text-center mb-4">
+                <span className="text-[#ff4d4d]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>SEND</span>
+              </div>
+              <div className="text-center">
+                <div className="text-[#ff4d4d]" style={{ fontFamily: "'VT323', monospace", fontSize: '36px' }}>
+                  -{userSentAvax > 0 ? userSentAvax.toFixed(4) : userSentToken ? formatTokenAmount(userSentToken.amount, userSentToken.decimals) : '0'} {userSentAvax > 0 ? 'AVAX' : userSentToken?.symbol}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isReceive && (
+            <div className="border-2 border-[#4dff88]/50 bg-[#0a0e27] p-6 mb-5">
+              <div className="text-center mb-4">
+                <span className="text-[#4dff88]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>RECEIVE</span>
+              </div>
+              <div className="text-center">
+                <div className="text-[#4dff88]" style={{ fontFamily: "'VT323', monospace", fontSize: '36px' }}>
+                  +{userReceivedAvax > 0 ? userReceivedAvax.toFixed(4) : userReceivedToken ? formatTokenAmount(userReceivedToken.amount, userReceivedToken.decimals) : '0'} {userReceivedAvax > 0 ? 'AVAX' : userReceivedToken?.symbol}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {isApprove && tx.approvals && tx.approvals.map((approval, i) => (
+            <div key={i} className="border-2 border-[#ffeb3b]/50 bg-[#0a0e27] p-6 mb-5">
+              <div className="text-center mb-4">
+                <span className="text-[#ffeb3b]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>APPROVE</span>
+              </div>
+              <div className="text-center">
+                <div className="text-[#ffeb3b]" style={{ fontFamily: "'VT323', monospace", fontSize: '36px' }}>
+                  {approval.is_unlimited ? 'Unlimited' : formatTokenAmount(approval.amount, approval.decimals)} {approval.symbol || 'TOKEN'}
+                </div>
+                <div className="text-[#4db8ff] mt-3" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+                  for {getProtocolName(approval.spender) || `${approval.spender.slice(0, 8)}...${approval.spender.slice(-6)}`}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {isContract && (
+            <div className="border-2 border-[#4db8ff]/50 bg-[#0a0e27] p-6 mb-5">
+              <div className="text-center mb-4">
+                <span className="text-[#4db8ff]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>CONTRACT</span>
+              </div>
+              <div className="text-center">
+                <div className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '24px' }}>
+                  Contract Interaction
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fee */}
+          <div className="flex items-center justify-between py-4 border-b border-[#4db8ff]/20">
+            <span className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>Fee</span>
+            <span className="text-[#ffeb3b]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>{txFee.toFixed(6)} AVAX</span>
+          </div>
+
+          {/* Block */}
+          <div className="flex items-center justify-between py-4 border-b border-[#4db8ff]/20">
+            <span className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>Block</span>
+            <Link to={`/block/${tx.block_number}`} className="text-[#8be4ff] hover:text-white" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+              #{tx.block_number.toLocaleString()}
+            </Link>
+          </div>
+
+          {/* From/To */}
+          <div className="flex items-center justify-between py-4 border-b border-[#4db8ff]/20">
+            <span className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>From</span>
+            <Link to={`/address/${tx.from}`} className="text-[#8be4ff] hover:text-white" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+              {getAddressLabel(tx.from) || `${tx.from.slice(0, 8)}...${tx.from.slice(-6)}`}
+            </Link>
+          </div>
+
+          {tx.to && (
+            <div className="flex items-center justify-between py-4 border-b border-[#4db8ff]/20">
+              <span className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+                {getProtocolName(tx.to) ? 'Protocol' : getTokenName(tx.to) ? 'Token' : 'To'}
+              </span>
+              {getProtocolName(tx.to) ? (
+                <span className="text-[#8be4ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+                  {getProtocolName(tx.to)}
+                </span>
+              ) : getTokenName(tx.to) ? (
+                <span className="text-[#8be4ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+                  {getTokenName(tx.to)}
+                </span>
+              ) : (
+                <Link to={`/address/${tx.to}`} className="text-[#8be4ff] hover:text-white" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+                  {getAddressLabel(tx.to) || `${tx.to.slice(0, 8)}...${tx.to.slice(-6)}`}
+                </Link>
+              )}
+            </div>
+          )}
+
+          {/* Hash */}
+          <div className="flex items-center justify-between py-4">
+            <span className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>Hash</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[#8be4ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '22px' }}>
+                {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
+              </span>
+              <button onClick={copyHash} className="p-1.5 hover:bg-[#8be4ff]/10">
+                {copied ? <Check className="w-5 h-5 text-[#4dff88]" /> : <Copy className="w-5 h-5 text-[#4db8ff]" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Details Toggle */}
+          {tx.token_transfers && tx.token_transfers.length > 0 && (
+            <div className="mt-5">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="flex items-center gap-2 text-[#4db8ff] hover:text-[#8be4ff]"
+                style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}
+              >
+                {showDetails ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                {showDetails ? 'Hide' : 'Show'} {tx.token_transfers.length} token transfers
+              </button>
+
+              {showDetails && (
+                <div className="mt-4 space-y-3">
+                  {tx.token_transfers.map((t, i) => (
+                    <div key={i} className="flex items-center gap-3 text-[#4db8ff]/80" style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}>
+                      <span className="text-white">{formatTokenAmount(t.value, t.decimals)} {t.symbol}</span>
+                      <span className="text-[#4db8ff]/50">→</span>
+                      <span>{t.to.slice(0, 6)}...{t.to.slice(-4)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
