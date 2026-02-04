@@ -21,7 +21,7 @@ import type {
   NativeBalance,
 } from '../types/api';
 
-const API_BASE = 'http://135.181.116.124:8080';
+const API_BASE = 'https://api.l1beat.io';
 const DEFAULT_CHAIN_ID = 43114; // C-Chain
 
 class ApiClient {
