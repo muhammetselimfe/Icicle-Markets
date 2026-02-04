@@ -9,7 +9,7 @@ interface UseBlocksWebSocketResult {
   clearError: () => void;
 }
 
-const WS_URL = 'ws://135.181.116.124:8080/ws/blocks/43114';
+const WS_URL = 'wss://api.l1beat.io/ws/blocks/43114';
 const MAX_BLOCKS = 10;
 const RECONNECT_DELAY = 3000;
 
