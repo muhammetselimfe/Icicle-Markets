@@ -156,31 +156,24 @@ export function usePortfolio(): PortfolioData {
 
       // Add ERC-20 tokens with non-zero balances
       for (const { balance, token } of tokenMappings) {
-        // Skip if balance is 0
-        if (balance.balance === '0') continue;
+        // Skip unknown tokens (potential scams/dust attacks) and zero balances
+        if (!token || balance.balance === '0') continue;
 
-        const decimals = balance.decimals ?? token?.decimals ?? 18;
+        const decimals = balance.decimals ?? token.decimals ?? 18;
         const balanceRaw = BigInt(balance.balance);
         const balanceFormatted = formatUnits(balanceRaw, decimals);
 
-        // Get price data (only for known tokens with CoinGecko IDs)
-        let priceUsd = 0;
-        let change24h = 0;
-
-        if (token) {
-          const priceData = prices[token.coingeckoId];
-          priceUsd = priceData?.usd ?? 0;
-          change24h = priceData?.usd_24h_change ?? 0;
-        }
-
+        // Get price data from CoinGecko
+        const priceData = prices[token.coingeckoId];
+        const priceUsd = priceData?.usd ?? 0;
+        const change24h = priceData?.usd_24h_change ?? 0;
         const valueUsd = parseFloat(balanceFormatted) * priceUsd;
 
-        // Use token info from our known list, or fall back to indexer data
         portfolioHoldings.push({
-          symbol: token?.symbol || balance.symbol || 'UNKNOWN',
-          name: token?.name || balance.name || 'Unknown Token',
+          symbol: token.symbol,
+          name: token.name,
           address: balance.token,
-          logoUrl: token?.logoUrl,
+          logoUrl: token.logoUrl,
           balance: balanceFormatted,
           balanceRaw,
           decimals,
