@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { X, Wallet, QrCode, ExternalLink } from 'lucide-react';
@@ -20,6 +20,16 @@ function AppContent() {
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+
+  // Auto-connect when in wallet's in-app browser (window.ethereum is injected)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.ethereum && !isConnected && !isPending) {
+      const injectedConnector = connectors.find(c => c.id === 'injected');
+      if (injectedConnector) {
+        connect({ connector: injectedConnector });
+      }
+    }
+  }, []); // Run once on mount
 
   // Determine active tab from URL
   const getActiveTab = () => {
@@ -217,27 +227,6 @@ function AppContent() {
                           </div>
                           <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                             Open in Coinbase app
-                          </div>
-                        </div>
-                        <ExternalLink className="w-4 h-4 text-slate-500" />
-                      </div>
-                    </a>
-
-                    {/* Rabby Wallet - Direct deep link */}
-                    <a
-                      href={getWalletDeepLink('rabby')}
-                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-[#8697ff]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg font-bold text-[#8697ff]">R</span>
-                        </div>
-                        <div className="text-left flex-1">
-                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                            Rabby Wallet
-                          </div>
-                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                            Open in Rabby app
                           </div>
                         </div>
                         <ExternalLink className="w-4 h-4 text-slate-500" />
