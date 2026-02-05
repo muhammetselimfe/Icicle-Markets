@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { X, Wallet, QrCode } from 'lucide-react';
+import { X, Wallet, QrCode, ExternalLink } from 'lucide-react';
+import { isMobile, getWalletDeepLink } from '@/app/utils/mobile';
 import { Header } from '@/app/components/header';
 import { Navigation } from '@/app/components/navigation';
 import { Footer } from '@/app/components/footer';
@@ -154,42 +155,149 @@ function AppContent() {
               </div>
 
               <div className="p-4 space-y-3">
-                {connectors.map((connector) => (
-                  <button
-                    key={connector.id}
-                    onClick={() => handleSelectConnector(connector.id)}
-                    disabled={isPending}
-                    className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        {connector.id === 'walletConnect' ? (
-                          <QrCode className="w-5 h-5 text-slate-400" />
-                        ) : (
-                          <Wallet className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="text-left">
-                        <div
-                          className="text-white font-medium"
-                          style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
-                        >
-                          {connector.id === 'injected' ? 'Browser Wallet' : connector.name}
+                {/* Mobile: Show wallet-specific connectors with deep link support */}
+                {isMobile() ? (
+                  <>
+                    {/* MetaMask SDK connector */}
+                    {connectors.find(c => c.id === 'metaMaskSDK') && (
+                      <button
+                        onClick={() => handleSelectConnector('metaMaskSDK')}
+                        disabled={isPending}
+                        className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-[#f6851b]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
+                          </div>
+                          <div className="text-left">
+                            <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                              MetaMask
+                            </div>
+                            <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                              Open in MetaMask app
+                            </div>
+                          </div>
                         </div>
-                        <div
-                          className="text-slate-500"
-                          style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
-                        >
-                          {connector.id === 'injected'
-                            ? 'MetaMask, Rabby, etc.'
-                            : connector.id === 'walletConnect'
-                            ? 'Scan with mobile wallet'
-                            : ''}
+                      </button>
+                    )}
+
+                    {/* Core Wallet deep link */}
+                    <a
+                      href={getWalletDeepLink('core')}
+                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg font-bold text-white">C</span>
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                            Core Wallet
+                          </div>
+                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                            Open in Core app
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-slate-500" />
+                      </div>
+                    </a>
+
+                    {/* Coinbase Wallet connector */}
+                    {connectors.find(c => c.id === 'coinbaseWalletSDK') && (
+                      <button
+                        onClick={() => handleSelectConnector('coinbaseWalletSDK')}
+                        disabled={isPending}
+                        className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-[#0052ff]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <div className="w-6 h-6 bg-[#0052ff] rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">C</span>
+                            </div>
+                          </div>
+                          <div className="text-left">
+                            <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                              Coinbase Wallet
+                            </div>
+                            <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                              Open in Coinbase app
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* WalletConnect for other wallets */}
+                    {connectors.find(c => c.id === 'walletConnect') && (
+                      <button
+                        onClick={() => handleSelectConnector('walletConnect')}
+                        disabled={isPending}
+                        className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-[#3b99fc]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <QrCode className="w-5 h-5 text-[#3b99fc]" />
+                          </div>
+                          <div className="text-left">
+                            <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                              Other Wallets
+                            </div>
+                            <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                              Use WalletConnect
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  /* Desktop: Show all connectors */
+                  connectors.map((connector) => (
+                    <button
+                      key={connector.id}
+                      onClick={() => handleSelectConnector(connector.id)}
+                      disabled={isPending}
+                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          connector.id === 'metaMaskSDK' ? 'bg-[#f6851b]/10' :
+                          connector.id === 'coinbaseWalletSDK' ? 'bg-[#0052ff]/10' :
+                          connector.id === 'walletConnect' ? 'bg-[#3b99fc]/10' :
+                          'bg-white/10'
+                        }`}>
+                          {connector.id === 'metaMaskSDK' ? (
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
+                          ) : connector.id === 'coinbaseWalletSDK' ? (
+                            <div className="w-6 h-6 bg-[#0052ff] rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">C</span>
+                            </div>
+                          ) : connector.id === 'walletConnect' ? (
+                            <QrCode className="w-5 h-5 text-[#3b99fc]" />
+                          ) : (
+                            <Wallet className="w-5 h-5 text-slate-400" />
+                          )}
+                        </div>
+                        <div className="text-left">
+                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                            {connector.id === 'injected' ? 'Browser Wallet' : connector.name}
+                          </div>
+                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                            {connector.id === 'injected'
+                              ? 'MetaMask, Rabby, etc.'
+                              : connector.id === 'walletConnect'
+                              ? 'Scan with mobile wallet'
+                              : connector.id === 'metaMaskSDK'
+                              ? 'Connect with MetaMask'
+                              : connector.id === 'coinbaseWalletSDK'
+                              ? 'Connect with Coinbase'
+                              : ''}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))
+                )}
 
                 {isPending && (
                   <div className="text-center py-2">
