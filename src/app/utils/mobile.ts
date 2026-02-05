@@ -20,6 +20,9 @@ export const WALLET_DEEP_LINKS = {
   coinbase: {
     universal: 'https://go.cb-w.com/dapp?cb_url=',
   },
+  rabby: {
+    universal: 'https://rabby.io/dapp?url=',
+  },
 } as const;
 
 /**

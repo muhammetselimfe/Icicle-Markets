@@ -155,33 +155,31 @@ function AppContent() {
               </div>
 
               <div className="p-4 space-y-3">
-                {/* Mobile: Show wallet-specific connectors with deep link support */}
+                {/* Mobile: Use direct deep links for all wallets */}
                 {isMobile() ? (
                   <>
-                    {/* MetaMask SDK connector */}
-                    {connectors.find(c => c.id === 'metaMaskSDK') && (
-                      <button
-                        onClick={() => handleSelectConnector('metaMaskSDK')}
-                        disabled={isPending}
-                        className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-[#f6851b]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
+                    {/* MetaMask - Direct deep link */}
+                    <a
+                      href={getWalletDeepLink('metamask')}
+                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-[#f6851b]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                            MetaMask
                           </div>
-                          <div className="text-left">
-                            <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                              MetaMask
-                            </div>
-                            <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                              Open in MetaMask app
-                            </div>
+                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                            Open in MetaMask app
                           </div>
                         </div>
-                      </button>
-                    )}
+                        <ExternalLink className="w-4 h-4 text-slate-500" />
+                      </div>
+                    </a>
 
-                    {/* Core Wallet deep link */}
+                    {/* Core Wallet - Direct deep link */}
                     <a
                       href={getWalletDeepLink('core')}
                       className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
@@ -202,30 +200,49 @@ function AppContent() {
                       </div>
                     </a>
 
-                    {/* Coinbase Wallet connector */}
-                    {connectors.find(c => c.id === 'coinbaseWalletSDK') && (
-                      <button
-                        onClick={() => handleSelectConnector('coinbaseWalletSDK')}
-                        disabled={isPending}
-                        className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-[#0052ff]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <div className="w-6 h-6 bg-[#0052ff] rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">C</span>
-                            </div>
-                          </div>
-                          <div className="text-left">
-                            <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                              Coinbase Wallet
-                            </div>
-                            <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                              Open in Coinbase app
-                            </div>
+                    {/* Coinbase Wallet - Direct deep link */}
+                    <a
+                      href={getWalletDeepLink('coinbase')}
+                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-[#0052ff]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <div className="w-6 h-6 bg-[#0052ff] rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">C</span>
                           </div>
                         </div>
-                      </button>
-                    )}
+                        <div className="text-left flex-1">
+                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                            Coinbase Wallet
+                          </div>
+                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                            Open in Coinbase app
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-slate-500" />
+                      </div>
+                    </a>
+
+                    {/* Rabby Wallet - Direct deep link */}
+                    <a
+                      href={getWalletDeepLink('rabby')}
+                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-[#8697ff]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg font-bold text-[#8697ff]">R</span>
+                        </div>
+                        <div className="text-left flex-1">
+                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                            Rabby Wallet
+                          </div>
+                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                            Open in Rabby app
+                          </div>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-slate-500" />
+                      </div>
+                    </a>
 
                     {/* WalletConnect for other wallets */}
                     {connectors.find(c => c.id === 'walletConnect') && (
