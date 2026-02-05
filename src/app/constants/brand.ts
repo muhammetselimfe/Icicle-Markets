@@ -59,15 +59,18 @@ export const COLORS = {
 } as const;
 
 /**
- * Typography - Retro Fonts
+ * Typography - Modern + Retro Fonts
  */
 export const FONTS = {
-  // Primary font for headings and buttons
+  // Primary font for headings and buttons (brand elements)
   display: "'Press Start 2P', cursive",
-  
-  // Secondary font for body text and data
+
+  // Secondary font for data display
   mono: "'VT323', monospace",
-  
+
+  // Modern sans-serif for UI text
+  sans: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+
   // Fallback system fonts
   system: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 } as const;
@@ -96,31 +99,42 @@ export const FONT_SIZES = {
 } as const;
 
 /**
- * Border Styles - Retro chunky borders
+ * Border Styles - Modern with subtle retro influence
  */
 export const BORDERS = {
   width: {
-    thin: '2px',
-    medium: '3px',
-    thick: '4px',
+    thin: '1px',
+    medium: '1.5px',
+    thick: '2px',
   },
   style: 'solid',
-  radius: '0px', // No border radius for retro feel
+  radius: {
+    none: '0px',
+    sm: '4px',
+    md: '8px',
+    lg: '12px',
+    full: '9999px',
+  },
 } as const;
 
 /**
- * Effects - Glows and shadows
+ * Effects - Softened glows and modern shadows
  */
 export const EFFECTS = {
   glow: {
-    sm: '0 0 10px rgba(139, 228, 255, 0.3)',
-    md: '0 0 15px rgba(139, 228, 255, 0.5)',
-    lg: '0 0 20px rgba(139, 228, 255, 0.6)',
-    xl: '0 0 30px rgba(139, 228, 255, 0.7)',
+    sm: '0 0 10px rgba(139, 228, 255, 0.15)',
+    md: '0 0 15px rgba(139, 228, 255, 0.2)',
+    lg: '0 0 20px rgba(139, 228, 255, 0.25)',
+    xl: '0 0 30px rgba(139, 228, 255, 0.3)',
   },
   glowGreen: {
-    md: '0 0 15px rgba(77, 255, 136, 0.4)',
-    lg: '0 0 20px rgba(77, 255, 136, 0.5)',
+    md: '0 0 15px rgba(77, 255, 136, 0.15)',
+    lg: '0 0 20px rgba(77, 255, 136, 0.2)',
+  },
+  shadow: {
+    sm: '0 1px 2px rgba(0, 0, 0, 0.3)',
+    md: '0 4px 6px rgba(0, 0, 0, 0.3)',
+    lg: '0 10px 15px rgba(0, 0, 0, 0.3)',
   },
   scanline: 'repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.1) 0px, transparent 1px, transparent 2px, rgba(0, 0, 0, 0.1) 3px)',
 } as const;

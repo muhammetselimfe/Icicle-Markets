@@ -4,6 +4,7 @@ import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { X, Wallet, QrCode } from 'lucide-react';
 import { Header } from '@/app/components/header';
 import { Navigation } from '@/app/components/navigation';
+import { Footer } from '@/app/components/footer';
 import { MarketsView } from '@/app/components/markets-view';
 import { PortfolioView } from '@/app/components/portfolio-view';
 import { ExplorerView } from '@/app/components/explorer-view';
@@ -65,9 +66,9 @@ function AppContent() {
                        location.pathname.startsWith('/address/');
 
   return (
-    <div className="min-h-screen bg-[#0a0e27] text-white relative overflow-hidden">
+    <div className="min-h-screen bg-[#0a0e27] text-white relative overflow-hidden flex flex-col">
       {/* Retro grid background */}
-      <div className="fixed inset-0 opacity-20" style={{
+      <div className="fixed inset-0 opacity-20 pointer-events-none" style={{
         backgroundImage: `
           linear-gradient(rgba(139, 228, 255, 0.1) 1px, transparent 1px),
           linear-gradient(90deg, rgba(139, 228, 255, 0.1) 1px, transparent 1px)
@@ -110,7 +111,7 @@ function AppContent() {
       {!isDetailPage && (
         <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       )}
-      <main className="pb-12 relative z-10">
+      <main className="flex-1 pb-8 relative z-10">
         <Routes>
           <Route path="/" element={<MarketsView />} />
           <Route
@@ -128,27 +129,25 @@ function AppContent() {
           <Route path="/address/:address" element={<AddressPage />} />
         </Routes>
       </main>
+      <Footer />
       <Toaster theme="dark" />
 
       {/* Wallet Selection Modal */}
       {showWalletModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowWalletModal(false)} />
-          <div className="relative border-4 border-[#8be4ff] bg-[#0f1535] w-full max-w-sm mx-4 shadow-[0_0_30px_rgba(139,228,255,0.5)]">
-            <div className="absolute inset-0 bg-[#8be4ff] opacity-5" />
-            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-[#8be4ff] to-transparent" />
-
+          <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-sm mx-4 rounded-2xl">
             <div className="relative z-10">
-              <div className="flex items-center justify-between p-4 border-b-2 border-[#8be4ff]/30">
+              <div className="flex items-center justify-between p-5 border-b border-white/10">
                 <h2
-                  className="text-[#8be4ff]"
-                  style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '12px' }}
+                  className="text-white font-medium"
+                  style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}
                 >
-                  CONNECT WALLET
+                  Connect Wallet
                 </h2>
                 <button
                   onClick={() => setShowWalletModal(false)}
-                  className="text-[#8be4ff] hover:text-white transition-colors"
+                  className="text-slate-400 hover:text-white transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -160,26 +159,26 @@ function AppContent() {
                     key={connector.id}
                     onClick={() => handleSelectConnector(connector.id)}
                     disabled={isPending}
-                    className="w-full border-2 border-[#4db8ff] bg-[#0a0e27] p-4 hover:border-[#8be4ff] hover:bg-[#8be4ff]/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 border-2 border-[#8be4ff]/50 flex items-center justify-center bg-[#0f1535]">
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
                         {connector.id === 'walletConnect' ? (
-                          <QrCode className="w-5 h-5 text-[#8be4ff]" />
+                          <QrCode className="w-5 h-5 text-slate-400" />
                         ) : (
-                          <Wallet className="w-5 h-5 text-[#8be4ff]" />
+                          <Wallet className="w-5 h-5 text-slate-400" />
                         )}
                       </div>
                       <div className="text-left">
                         <div
-                          className="text-white"
-                          style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}
+                          className="text-white font-medium"
+                          style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
                         >
                           {connector.id === 'injected' ? 'Browser Wallet' : connector.name}
                         </div>
                         <div
-                          className="text-[#6b7280]"
-                          style={{ fontFamily: "'VT323', monospace", fontSize: '14px' }}
+                          className="text-slate-500"
+                          style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
                         >
                           {connector.id === 'injected'
                             ? 'MetaMask, Rabby, etc.'
@@ -195,8 +194,8 @@ function AppContent() {
                 {isPending && (
                   <div className="text-center py-2">
                     <span
-                      className="text-[#8be4ff]"
-                      style={{ fontFamily: "'VT323', monospace", fontSize: '16px' }}
+                      className="text-slate-400"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                     >
                       Connecting...
                     </span>

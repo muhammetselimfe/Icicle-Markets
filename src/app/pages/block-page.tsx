@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Box, ArrowLeft, Copy, Check, ExternalLink, Hash, Cpu, Fuel, Database, Zap, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { api } from '@/app/services/api';
-import { formatGas, formatAddress } from '@/app/utils/formatters';
+import { formatGas } from '@/app/utils/formatters';
 import { getRelativeTime } from '@/app/utils/time';
 import type { Block } from '@/app/types/api';
 
 function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-[#4db8ff]/20 ${className}`} />;
+  return <div className={`animate-pulse bg-white/10 rounded-lg ${className}`} />;
 }
 
 export function BlockPage() {
@@ -63,7 +63,7 @@ export function BlockPage() {
         <div className="mb-6">
           <Skeleton className="h-8 w-48" />
         </div>
-        <div className="border-3 border-[#8be4ff] bg-[#0f1535] p-8">
+        <div className="bg-white/[0.02] p-8 rounded-xl">
           <div className="space-y-6">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -82,18 +82,18 @@ export function BlockPage() {
       <div className="container mx-auto px-6 py-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-[#8be4ff] hover:text-white transition-colors mb-6"
+          className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors mb-6"
         >
-          <ArrowLeft className="w-5 h-5" />
-          <span style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}>BACK</span>
+          <ArrowLeft className="w-4 h-4" />
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
         </button>
 
-        <div className="border-3 border-[#ff4d4d] bg-[#0f1535] p-8 text-center">
-          <Box className="w-16 h-16 text-[#ff4d4d] mx-auto mb-4" />
-          <h1 className="text-[#ff4d4d] mb-2" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>
-            BLOCK NOT FOUND
+        <div className="bg-red-500/10 p-8 rounded-xl text-center">
+          <Box className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-red-500 font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+            Block Not Found
           </h1>
-          <p className="text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}>
+          <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
             {error || `Block #${blockNumber} could not be found`}
           </p>
         </div>
@@ -110,32 +110,29 @@ export function BlockPage() {
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-[#8be4ff] hover:text-white transition-colors mb-6"
+        className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors mb-6"
       >
-        <ArrowLeft className="w-5 h-5" />
-        <span style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}>BACK</span>
+        <ArrowLeft className="w-4 h-4" />
+        <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
       </button>
 
       {/* Main container */}
-      <div className="relative border-3 border-[#8be4ff] bg-[#0f1535] overflow-hidden">
-        <div className="absolute inset-0 bg-[#8be4ff] opacity-5" />
-        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#4dff88] via-[#8be4ff] to-[#4dff88]" />
-
-        <div className="relative z-10 p-8">
+      <div className="bg-white/[0.02] rounded-xl overflow-hidden">
+        <div className="p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 border-3 border-[#8be4ff] bg-[#0a0e27] flex items-center justify-center">
-                <Box className="w-8 h-8 text-[#8be4ff]" />
+              <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
+                <Box className="w-7 h-7 text-slate-400" />
               </div>
               <div>
-                <h1 className="text-[#8be4ff] mb-2" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '16px' }}>
-                  BLOCK #{block.block_number.toLocaleString()}
+                <h1 className="text-white font-medium mb-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+                  Block #{block.block_number.toLocaleString()}
                 </h1>
-                <div className="flex items-center gap-2 text-[#4db8ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '18px' }}>
+                <div className="flex items-center gap-2 text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                   <Clock className="w-4 h-4" />
                   {formatDate(block.block_time)}
-                  <span className="text-[#4dff88]">({getRelativeTime(block.block_time)})</span>
+                  <span className="text-green-500">({getRelativeTime(block.block_time)})</span>
                 </div>
               </div>
             </div>
@@ -144,99 +141,99 @@ export function BlockPage() {
             <div className="flex items-center gap-2">
               <Link
                 to={`/block/${prevBlock}`}
-                className="flex items-center gap-1 px-4 py-2 border-2 border-[#4db8ff] bg-[#0a0e27] hover:border-[#8be4ff] hover:bg-[#8be4ff]/10 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 text-[#8be4ff]" />
-                <span className="text-[#8be4ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '16px' }}>PREV</span>
+                <ChevronLeft className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Prev</span>
               </Link>
               <Link
                 to={`/block/${nextBlock}`}
-                className="flex items-center gap-1 px-4 py-2 border-2 border-[#4db8ff] bg-[#0a0e27] hover:border-[#8be4ff] hover:bg-[#8be4ff]/10 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
               >
-                <span className="text-[#8be4ff]" style={{ fontFamily: "'VT323', monospace", fontSize: '16px' }}>NEXT</span>
-                <ChevronRight className="w-4 h-4 text-[#8be4ff]" />
+                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Next</span>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
               </Link>
             </div>
           </div>
 
           {/* Block Hash */}
-          <div className="border-2 border-[#4db8ff]/30 bg-[#0a0e27] p-4 mb-4">
+          <div className="bg-white/5 p-4 mb-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Hash className="w-5 h-5 text-[#4db8ff]" />
-              <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '16px' }}>
+              <Hash className="w-4 h-4 text-slate-400" />
+              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Block Hash
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <code className="flex-1 text-[#8be4ff] break-all" style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}>
+              <code className="flex-1 text-white break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                 {block.hash}
               </code>
               <button
                 onClick={() => copyToClipboard(block.hash, 'hash')}
-                className="p-2 border-2 border-[#4db8ff]/50 hover:border-[#8be4ff] hover:bg-[#8be4ff]/10 transition-colors"
+                className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
               >
                 {copiedField === 'hash' ? (
-                  <Check className="w-5 h-5 text-[#4dff88]" />
+                  <Check className="w-4 h-4 text-green-500" />
                 ) : (
-                  <Copy className="w-5 h-5 text-[#4db8ff]" />
+                  <Copy className="w-4 h-4 text-slate-400" />
                 )}
               </button>
             </div>
           </div>
 
           {/* Parent Hash */}
-          <div className="border-2 border-[#4db8ff]/30 bg-[#0a0e27] p-4 mb-4">
+          <div className="bg-white/5 p-4 mb-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Hash className="w-5 h-5 text-[#4db8ff]" />
-              <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '16px' }}>
+              <Hash className="w-4 h-4 text-slate-400" />
+              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Parent Hash
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 to={`/block/${prevBlock}`}
-                className="flex-1 text-[#8be4ff] break-all hover:text-[#4dff88] transition-colors"
-                style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}
+                className="flex-1 text-white break-all hover:text-green-500 transition-colors"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
                 {block.parent_hash}
               </Link>
               <button
                 onClick={() => copyToClipboard(block.parent_hash, 'parent')}
-                className="p-2 border-2 border-[#4db8ff]/50 hover:border-[#8be4ff] hover:bg-[#8be4ff]/10 transition-colors"
+                className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
               >
                 {copiedField === 'parent' ? (
-                  <Check className="w-5 h-5 text-[#4dff88]" />
+                  <Check className="w-4 h-4 text-green-500" />
                 ) : (
-                  <Copy className="w-5 h-5 text-[#4db8ff]" />
+                  <Copy className="w-4 h-4 text-slate-400" />
                 )}
               </button>
             </div>
           </div>
 
           {/* Validated By */}
-          <div className="border-2 border-[#4db8ff]/30 bg-[#0a0e27] p-4 mb-6">
+          <div className="bg-white/5 p-4 mb-6 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Cpu className="w-5 h-5 text-[#4db8ff]" />
-              <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '16px' }}>
+              <Cpu className="w-4 h-4 text-slate-400" />
+              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Validated By
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 to={`/address/${block.miner}`}
-                className="flex-1 text-[#8be4ff] break-all hover:text-[#4dff88] transition-colors"
-                style={{ fontFamily: "'VT323', monospace", fontSize: '20px' }}
+                className="flex-1 text-white break-all hover:text-green-500 transition-colors"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
                 {block.miner}
               </Link>
               <button
                 onClick={() => copyToClipboard(block.miner, 'miner')}
-                className="p-2 border-2 border-[#4db8ff]/50 hover:border-[#8be4ff] hover:bg-[#8be4ff]/10 transition-colors"
+                className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
               >
                 {copiedField === 'miner' ? (
-                  <Check className="w-5 h-5 text-[#4dff88]" />
+                  <Check className="w-4 h-4 text-green-500" />
                 ) : (
-                  <Copy className="w-5 h-5 text-[#4db8ff]" />
+                  <Copy className="w-4 h-4 text-slate-400" />
                 )}
               </button>
             </div>
@@ -244,63 +241,71 @@ export function BlockPage() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-4 mb-6">
-            {/* Transactions */}
-            <div className="border-2 border-[#4dff88]/50 bg-[#0a0e27] p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-5 h-5 text-[#4dff88]" />
-                <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '14px' }}>
-                  Transactions
-                </span>
+            {/* Transactions - Links to Snowtrace */}
+            <a
+              href={`https://snowtrace.io/block/${block.block_number}/txs`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white/5 p-4 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    Transactions
+                  </span>
+                </div>
+                <ExternalLink className="w-3 h-3 text-slate-500" />
               </div>
-              <div className="text-[#4dff88]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '18px' }}>
+              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                 {block.tx_count ?? 0}
               </div>
-            </div>
+            </a>
 
             {/* Size */}
-            <div className="border-2 border-[#8be4ff]/50 bg-[#0a0e27] p-4">
+            <div className="bg-white/5 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Database className="w-5 h-5 text-[#8be4ff]" />
-                <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '14px' }}>
+                <Database className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                   Block Size
                 </span>
               </div>
-              <div className="text-[#8be4ff]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '18px' }}>
+              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                 {(block.size / 1024).toFixed(2)} KB
               </div>
             </div>
 
             {/* Gas Used */}
-            <div className="border-2 border-[#ffeb3b]/50 bg-[#0a0e27] p-4">
+            <div className="bg-white/5 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Fuel className="w-5 h-5 text-[#ffeb3b]" />
-                <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '14px' }}>
+                <Fuel className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                   Gas Used
                 </span>
               </div>
-              <div className="text-[#ffeb3b]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>
+              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                 {formatGas(block.gas_used)}
               </div>
-              <div className="mt-3 h-3 bg-[#0a0e27] border-2 border-[#4db8ff]/30">
+              <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#4dff88] to-[#ffeb3b]"
+                  className="h-full bg-gradient-to-r from-green-500 to-yellow-500 rounded-full"
                   style={{ width: `${Math.min(parseFloat(gasPercentage), 100)}%` }}
                 />
               </div>
-              <div className="text-[#4db8ff] mt-1" style={{ fontFamily: "'VT323', monospace", fontSize: '14px' }}>
+              <div className="text-slate-500 mt-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
                 {gasPercentage}% of {formatGas(block.gas_limit)}
               </div>
             </div>
 
             {/* Base Fee */}
-            <div className="border-2 border-[#8be4ff]/50 bg-[#0a0e27] p-4">
+            <div className="bg-white/5 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Fuel className="w-5 h-5 text-[#8be4ff]" />
-                <span className="text-[#4db8ff] uppercase" style={{ fontFamily: "'VT323', monospace", fontSize: '14px' }}>
+                <Fuel className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                   Base Fee
                 </span>
               </div>
-              <div className="text-[#8be4ff]" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '14px' }}>
+              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                 {(block.base_fee_per_gas / 1e9).toFixed(2)} GWEI
               </div>
             </div>
@@ -311,10 +316,10 @@ export function BlockPage() {
             href={`https://snowtrace.io/block/${block.block_number}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 p-4 border-2 border-[#8be4ff] bg-[#8be4ff]/10 hover:bg-[#8be4ff]/20 transition-colors"
+            className="flex items-center justify-center gap-3 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
           >
-            <ExternalLink className="w-5 h-5 text-[#8be4ff]" />
-            <span className="text-[#8be4ff] uppercase" style={{ fontFamily: "'Press Start 2P', cursive", fontSize: '12px' }}>
+            <ExternalLink className="w-4 h-4 text-slate-400" />
+            <span className="text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
               View on Snowtrace
             </span>
           </a>
