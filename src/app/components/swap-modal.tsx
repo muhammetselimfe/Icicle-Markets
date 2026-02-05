@@ -36,9 +36,10 @@ interface SwapModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialToToken?: { symbol: string; address?: string };
+  onConnectWallet?: () => void;
 }
 
-export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
+export function SwapModal({ isOpen, onClose, initialToToken, onConnectWallet }: SwapModalProps) {
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
 
@@ -260,6 +261,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   };
 
   const handleSwapClick = async () => {
+    if (!isConnected) {
+      onConnectWallet?.();
+      return;
+    }
     if (!quote) return;
     await execute(quote, fromToken, toToken, slippage);
   };
@@ -305,7 +310,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   };
 
   const isButtonDisabled = () => {
-    if (!isConnected) return true;
+    if (!isConnected) return false; // Allow clicking to connect wallet
     if (!fromAmount || fromAmount === '0') return true;
     if (hasInsufficientBalance) return true;
     if (quoteLoading) return true;
@@ -320,10 +325,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   // Success state
   if (step === 'success' && txHash) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
-        <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md mx-4 rounded-2xl">
-          <div className="relative z-10 p-8 text-center">
+        <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
+          <div className="relative z-10 p-6 md:p-8 text-center">
             <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 rounded-2xl flex items-center justify-center">
               <Check className="w-10 h-10 text-green-500" />
             </div>
@@ -366,10 +371,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   // Token select modal
   if (showTokenSelect) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/70" onClick={() => { setShowTokenSelect(null); setShowAllTokens(false); }} />
-        <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md mx-4 rounded-2xl">
-          <div className="relative z-10">
+        <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md rounded-2xl max-h-[90vh] flex flex-col">
+          <div className="relative z-10 flex flex-col max-h-full">
             <div className="flex items-center justify-between p-5 border-b border-white/10">
               <h2
                 className="text-white font-medium"
@@ -396,12 +401,12 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
               />
             </div>
 
-            <div className="max-h-80 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto max-h-80 md:max-h-96">
               {filteredTokens.map((token) => (
                 <button
                   key={token.address}
                   onClick={() => handleSelectToken(token)}
-                  className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-colors min-h-[56px]"
                 >
                   <TokenLogo token={token} size="md" />
                   <div className="text-left">
@@ -432,9 +437,9 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
-      <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md mx-4 rounded-2xl">
+      <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
         <div className="relative z-10">
           {/* Header with Buy/Sell toggle */}
           <div className="flex items-center justify-between p-4 border-b border-white/10">
@@ -553,8 +558,8 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                   value={fromAmount}
                   onChange={(e) => setFromAmount(e.target.value)}
                   placeholder="0"
-                  className="flex-1 bg-transparent text-white text-right focus:outline-none min-w-0 font-medium"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '32px' }}
+                  className="flex-1 bg-transparent text-white text-right focus:outline-none min-w-0 font-medium text-2xl md:text-3xl"
+                  style={{ fontFamily: "Inter, sans-serif" }}
                 />
               </div>
             </div>
@@ -584,8 +589,8 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                     <Loader2 className="w-8 h-8 animate-spin ml-auto text-slate-400" />
                   ) : (
                     <span
-                      className={cn("font-medium", toAmount ? "text-white" : "text-slate-500")}
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '32px' }}
+                      className={cn("font-medium text-2xl md:text-3xl", toAmount ? "text-white" : "text-slate-500")}
+                      style={{ fontFamily: "Inter, sans-serif" }}
                     >
                       {toAmount || '0'}
                     </span>
@@ -672,12 +677,12 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
           )}
 
           {/* Action Button */}
-          <div className="p-5">
+          <div className="p-4 md:p-5">
             <button
               onClick={handleSwapClick}
               disabled={isButtonDisabled()}
               className={cn(
-                "w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-3",
+                "w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-3 min-h-[52px]",
                 hasInsufficientBalance
                   ? "bg-red-500/10 text-red-500 cursor-not-allowed"
                   : isButtonDisabled()

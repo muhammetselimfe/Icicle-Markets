@@ -113,7 +113,7 @@ function AppContent() {
       )}
       <main className="flex-1 pb-8 relative z-10">
         <Routes>
-          <Route path="/" element={<MarketsView />} />
+          <Route path="/" element={<MarketsView onConnectWallet={handleConnectWallet} />} />
           <Route
             path="/portfolio"
             element={
@@ -134,11 +134,11 @@ function AppContent() {
 
       {/* Wallet Selection Modal */}
       {showWalletModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowWalletModal(false)} />
-          <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-sm mx-4 rounded-2xl">
+          <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-sm rounded-2xl max-h-[90vh] overflow-y-auto">
             <div className="relative z-10">
-              <div className="flex items-center justify-between p-5 border-b border-white/10">
+              <div className="flex items-center justify-between p-4 md:p-5 border-b border-white/10">
                 <h2
                   className="text-white font-medium"
                   style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}
@@ -147,7 +147,7 @@ function AppContent() {
                 </h2>
                 <button
                   onClick={() => setShowWalletModal(false)}
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="text-slate-400 hover:text-white transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -159,10 +159,10 @@ function AppContent() {
                     key={connector.id}
                     onClick={() => handleSelectConnector(connector.id)}
                     disabled={isPending}
-                    className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
                         {connector.id === 'walletConnect' ? (
                           <QrCode className="w-5 h-5 text-slate-400" />
                         ) : (

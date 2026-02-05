@@ -119,11 +119,11 @@ export function ExplorerView() {
   })).reverse();
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
       {/* Stats + TPS Chart Row */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {/* TPS */}
           <div className="bg-white/[0.02] p-4 rounded-xl">
             <div className="flex items-center gap-3">
@@ -241,7 +241,7 @@ export function ExplorerView() {
         </div>
 
         {/* TPS Chart */}
-        <div className="bg-white/[0.02] p-4 rounded-xl flex flex-col">
+        <div className="bg-white/[0.02] p-4 rounded-xl flex flex-col min-h-[200px] md:min-h-0">
           <div className="flex items-center justify-between mb-3">
             <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
               TPS (24H)
@@ -283,7 +283,7 @@ export function ExplorerView() {
       </div>
 
       {/* Side-by-side Streams */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <BlockStream blocks={blocks} loading={blocksLoading} error={blocksError} lastError={blocksLastError} onClearError={clearBlocksError} connected={blocksConnected} />
         <TransactionStream />
       </div>

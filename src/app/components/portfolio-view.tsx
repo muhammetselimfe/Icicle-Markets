@@ -183,7 +183,7 @@ function TransactionIcon({ type }: { type: TransactionType }) {
 
 function LoadingState() {
   return (
-    <div className="container mx-auto px-6 py-16">
+    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <div className="max-w-3xl mx-auto">
         <div className="p-16 text-center">
           <div className="w-16 h-16 mx-auto mb-6 bg-white/5 rounded-full flex items-center justify-center">
@@ -285,66 +285,113 @@ function HoldingsTab({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-white/10">
-            <th className="text-left px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Asset</th>
-            <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Balance</th>
-            <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Value</th>
-            <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>24h Change</th>
-            <th className="text-center px-4 py-4"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {holdings.map((holding) => (
-            <tr key={holding.address} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-              <td className="px-4 py-4">
-                <div className="flex items-center gap-3">
-                  <TokenLogo holding={holding} />
-                  <div>
-                    <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                      {holding.symbol}
-                    </div>
-                    <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                      {holding.name}
-                    </div>
+    <>
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {holdings.map((holding) => (
+          <div key={holding.address} className="bg-white/[0.02] p-4 rounded-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <TokenLogo holding={holding} />
+                <div>
+                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                    {holding.symbol}
+                  </div>
+                  <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    {holding.name}
                   </div>
                 </div>
-              </td>
-              <td className="px-4 py-4 text-right">
-                <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                  {formatBalance(holding.balance)}
+              </div>
+              <span className={cn(
+                "font-medium",
+                holding.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+              )} style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                  ${formatNumber(holding.valueUsd)}
                 </div>
                 <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                  ${holding.priceUsd < 0.01 ? holding.priceUsd.toFixed(6) : formatNumber(holding.priceUsd)}
+                  {formatBalance(holding.balance)} {holding.symbol}
                 </div>
-              </td>
-              <td className="px-4 py-4 text-right text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                ${formatNumber(holding.valueUsd)}
-              </td>
-              <td className="px-4 py-4 text-right">
-                <span className={cn(
-                  "font-medium",
-                  holding.change24h >= 0 ? 'text-green-500' : 'text-red-500'
-                )} style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                  {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
-                </span>
-              </td>
-              <td className="px-4 py-4 text-center">
-                <button
-                  onClick={() => onTradeClick(holding)}
-                  className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all rounded-lg font-medium"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
-                >
-                  Trade
-                </button>
-              </td>
+              </div>
+              <button
+                onClick={() => onTradeClick(holding)}
+                className="px-4 py-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all rounded-lg font-medium min-h-[44px]"
+                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+              >
+                Trade
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="text-left px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Asset</th>
+              <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Balance</th>
+              <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Value</th>
+              <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>24h Change</th>
+              <th className="text-center px-4 py-4"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {holdings.map((holding) => (
+              <tr key={holding.address} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                <td className="px-4 py-4">
+                  <div className="flex items-center gap-3">
+                    <TokenLogo holding={holding} />
+                    <div>
+                      <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                        {holding.symbol}
+                      </div>
+                      <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                        {holding.name}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-4 text-right">
+                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                    {formatBalance(holding.balance)}
+                  </div>
+                  <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    ${holding.priceUsd < 0.01 ? holding.priceUsd.toFixed(6) : formatNumber(holding.priceUsd)}
+                  </div>
+                </td>
+                <td className="px-4 py-4 text-right text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  ${formatNumber(holding.valueUsd)}
+                </td>
+                <td className="px-4 py-4 text-right">
+                  <span className={cn(
+                    "font-medium",
+                    holding.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                  )} style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                    {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
+                  </span>
+                </td>
+                <td className="px-4 py-4 text-center">
+                  <button
+                    onClick={() => onTradeClick(holding)}
+                    className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all rounded-lg font-medium"
+                    style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+                  >
+                    Trade
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
@@ -486,7 +533,7 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
   // Not connected state
   if (!isWalletConnected) {
     return (
-      <div className="container mx-auto px-6 py-16">
+      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
         <div className="max-w-md mx-auto">
           <div className="p-10 text-center">
             <div className="w-16 h-16 mx-auto mb-6 bg-white/5 rounded-full flex items-center justify-center">
@@ -524,11 +571,11 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
   const totalChangeValue = totalValue * (totalChange24h / 100);
 
   return (
-    <div className="container mx-auto px-6 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-4xl">
       {/* Profile Header - Clean stacked layout */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         {/* Identity Row */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
           {address && <WalletAvatar address={address} size={48} />}
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -564,12 +611,12 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
         </div>
 
         {/* Value Row */}
-        <div className="flex items-end justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
             <div className="text-slate-400 mb-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
               Portfolio Value
             </div>
-            <div className="text-white" style={{ fontFamily: "Inter, sans-serif", fontSize: '32px', fontWeight: 600 }}>
+            <div className="text-white" style={{ fontFamily: "Inter, sans-serif", fontSize: '28px', fontWeight: 600 }}>
               ${formatNumber(totalValue)}
             </div>
           </div>
@@ -582,7 +629,7 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
             ) : (
               <TrendingDown className="w-4 h-4" />
             )}
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: '15px', fontWeight: 500 }}>
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px', fontWeight: 500 }}>
               {totalChange24h >= 0 ? '+' : ''}{totalChange24h.toFixed(2)}% ({totalChange24h >= 0 ? '+' : '-'}{formatCompactNumber(Math.abs(totalChangeValue))})
             </span>
           </div>
@@ -590,12 +637,12 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
       </div>
 
       {/* Tabs - Pill/segment style */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-2 p-1 bg-white/5 rounded-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex gap-1 p-1 bg-white/5 rounded-xl overflow-x-auto scrollbar-hide">
           <button
             onClick={() => setActiveTab('holdings')}
             className={cn(
-              "px-4 py-2 rounded-lg transition-all font-medium",
+              "px-3 md:px-4 py-2 rounded-lg transition-all font-medium whitespace-nowrap min-h-[44px]",
               activeTab === 'holdings'
                 ? "bg-white/10 text-white"
                 : "text-slate-400 hover:text-white"
@@ -607,7 +654,7 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
           <button
             onClick={() => setActiveTab('transactions')}
             className={cn(
-              "px-4 py-2 rounded-lg transition-all font-medium",
+              "px-3 md:px-4 py-2 rounded-lg transition-all font-medium whitespace-nowrap min-h-[44px]",
               activeTab === 'transactions'
                 ? "bg-white/10 text-white"
                 : "text-slate-400 hover:text-white"
@@ -621,11 +668,11 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
         {/* Refresh Button */}
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/5"
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/5 min-h-[44px] self-start sm:self-auto"
           disabled={holdingsLoading || txLoading}
         >
           <RefreshCw className={cn("w-4 h-4", (holdingsLoading || txLoading) && "animate-spin")} />
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+          <span className="hidden sm:inline" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
             {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Refresh'}
           </span>
         </button>
@@ -657,6 +704,7 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
           setSelectedToken(null);
         }}
         initialToToken={selectedToken ?? undefined}
+        onConnectWallet={onConnectWallet}
       />
     </div>
   );

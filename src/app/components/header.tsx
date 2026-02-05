@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Wallet, Settings, ChevronDown, LogOut, Loader2 } from 'lucide-react';
+import { Search, Wallet, Settings, ChevronDown, LogOut, Loader2, Menu, X } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Input } from '@/app/components/ui/input';
 import { BRAND } from '@/app/constants/brand';
@@ -38,6 +38,7 @@ function detectSearchType(query: string): 'tx' | 'address' | 'block' | 'unknown'
 export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected, walletAddress }: HeaderProps) {
   const navigate = useNavigate();
   const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -97,14 +98,31 @@ export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected,
 
   return (
     <header className="border-b border-white/10 bg-[#0f1535] sticky top-0 z-50">
-      <div className="container mx-auto px-6 py-4">
-        <div className="flex items-center justify-between gap-8">
+      <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
+        {/* Mobile layout */}
+        <div className="flex items-center justify-between md:hidden">
+          <img
+            src={BRAND.logos.main}
+            alt={BRAND.name}
+            className="h-10 cursor-pointer"
+            onClick={() => navigate('/')}
+          />
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Desktop layout */}
+        <div className="hidden md:flex items-center justify-between gap-4 lg:gap-8">
           {/* Logo */}
           <div className="flex items-center">
             <img
               src={BRAND.logos.main}
               alt={BRAND.name}
-              className="h-16 cursor-pointer"
+              className="h-12 lg:h-16 cursor-pointer"
               onClick={() => navigate('/')}
             />
           </div>
@@ -221,6 +239,131 @@ export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected,
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="absolute right-0 top-0 h-full w-72 bg-[#0f1535] border-l border-white/10 p-6 flex flex-col">
+            {/* Close Button */}
+            <div className="flex justify-end mb-6">
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Mobile Search */}
+            <div className="mb-6">
+              <div className={cn(
+                "relative bg-white/5 rounded-xl",
+                searchError && "ring-1 ring-red-500"
+              )}>
+                {searching ? (
+                  <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+                ) : (
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                )}
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    handleKeyDown(e);
+                    if (e.key === 'Enter' && searchQuery.trim()) {
+                      setMobileMenuOpen(false);
+                    }
+                  }}
+                  placeholder="Search..."
+                  className="pl-10 pr-4 py-3 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0"
+                  style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                  disabled={searching}
+                />
+              </div>
+              {searchError && (
+                <div
+                  className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg"
+                  style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+                >
+                  {searchError}
+                </div>
+              )}
+            </div>
+
+            {/* Wallet Section */}
+            <div className="flex-1">
+              {isWalletConnected ? (
+                <div className="space-y-3">
+                  {/* Network Badge */}
+                  <div className="bg-white/5 px-4 py-3 flex items-center gap-2 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span
+                      className="text-slate-400"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Avalanche
+                    </span>
+                  </div>
+
+                  {/* Wallet Address */}
+                  <div className="bg-white/5 px-4 py-3 rounded-lg flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-slate-400" />
+                    <span
+                      className="text-white font-medium"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                    </span>
+                  </div>
+
+                  {/* Disconnect */}
+                  <button
+                    onClick={() => {
+                      onDisconnectWallet();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-red-500/10 rounded-lg flex items-center gap-2 hover:bg-red-500/20 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4 text-red-500" />
+                    <span
+                      className="text-red-500"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Disconnect
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    onConnectWallet();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full bg-white/10 px-5 py-3 hover:bg-white/15 transition-all rounded-lg flex items-center justify-center gap-2"
+                >
+                  <Wallet className="w-4 h-4 text-white" />
+                  <span
+                    className="text-white font-medium"
+                    style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                  >
+                    Connect Wallet
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Settings at bottom */}
+            <button className="mt-6 w-full bg-white/5 p-3 hover:bg-white/10 transition-colors rounded-lg text-slate-400 hover:text-white flex items-center justify-center gap-2">
+              <Settings className="w-5 h-5" />
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Settings</span>
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -32,7 +32,11 @@ function transformSparkline(prices: number[]): { value: number }[] {
 // Category tabs mapping
 const CATEGORY_TABS: TokenCategory[] = ['majors', 'defi', 'gaming', 'stablecoins', 'meme', 'liquid-staking', 'rwa'];
 
-export function MarketsView() {
+interface MarketsViewProps {
+  onConnectWallet?: () => void;
+}
+
+export function MarketsView({ onConnectWallet }: MarketsViewProps) {
   const [activeTab, setActiveTab] = useState('trending');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -92,10 +96,10 @@ export function MarketsView() {
   const filteredTokens = getFilteredTokens();
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
       {/* Pill-style Tabs */}
       <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl overflow-x-auto">
+        <div className="flex gap-1 p-1 bg-white/5 rounded-xl overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -120,8 +124,97 @@ export function MarketsView() {
         </div>
       </div>
 
-      {/* Token Table */}
-      <div className="relative bg-white/[0.02] overflow-hidden rounded-xl">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-3">
+        {tokensError ? (
+          <ErrorDisplay message={tokensError} />
+        ) : tokensLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white/[0.02] p-4 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div>
+                    <Skeleton className="h-4 w-20 mb-1" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                </div>
+                <Skeleton className="w-4 h-4" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Skeleton className="h-5 w-16 mb-1" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+                <Skeleton className="h-10 w-16 rounded-lg" />
+              </div>
+            </div>
+          ))
+        ) : (
+          filteredTokens.map((token) => {
+            const isPositive = token.change24h >= 0;
+            return (
+              <div key={token.id} className="bg-white/[0.02] p-4 rounded-xl">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-white/10 rounded-full overflow-hidden flex items-center justify-center">
+                      {token.image ? (
+                        <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-slate-400 text-xs">?</span>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                        {token.name}
+                      </div>
+                      <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                        {token.symbol}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleFavorite(token.id)}
+                    className="p-2 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  >
+                    <Star
+                      className={cn(
+                        "w-5 h-5",
+                        favorites.includes(token.id)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-slate-500"
+                      )}
+                    />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                      ${token.price < 0.01 ? token.price.toFixed(6) : token.price < 1 ? token.price.toFixed(4) : token.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </div>
+                    <div
+                      className={cn("font-medium", isPositive ? 'text-green-500' : 'text-red-500')}
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+                    >
+                      {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleBuyClick(token)}
+                    className="px-4 py-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg font-medium transition-colors min-h-[44px]"
+                    style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                  >
+                    Trade
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop Token Table */}
+      <div className="hidden md:block relative bg-white/[0.02] overflow-hidden rounded-xl">
         <div className="relative overflow-x-auto">
           {tokensError ? (
             <ErrorDisplay message={tokensError} />
@@ -266,6 +359,7 @@ export function MarketsView() {
           setSelectedToken(null);
         }}
         initialToToken={selectedToken ?? undefined}
+        onConnectWallet={onConnectWallet}
       />
     </div>
   );
