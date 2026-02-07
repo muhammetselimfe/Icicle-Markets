@@ -250,6 +250,15 @@ const LISTED_TOKENS: Record<string, ListedTokenConfig> = {
     symbolOverride: 'JTRSY',
     restricted: true,
   },
+  // BENJI (Franklin Templeton OnChain U.S. Government Money Fund)
+  '0xe08b4c1005603427420e64252a8b120cace4d122': {
+    category: 'rwa',
+    coingeckoId: 'franklin-templeton-benji',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/66409/small/Benji_Logo.png',
+    nameOverride: 'Franklin Templeton Benji',
+    symbolOverride: 'BENJI',
+    restricted: true,
+  },
 };
 
 // Build token list from tokenlist.json + LISTED_TOKENS config
