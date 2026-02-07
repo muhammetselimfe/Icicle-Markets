@@ -15,6 +15,7 @@ export interface TokenData {
   rank: number;
   category?: TokenCategory;
   address?: string;
+  restricted?: boolean;
 }
 
 interface UseTokenPricesResult {
@@ -166,6 +167,7 @@ export function useMarketTokens(): UseTokenPricesResult {
           rank: coin.market_cap_rank || 0,
           category: marketToken?.category,
           address: marketToken?.address,
+          restricted: marketToken?.restricted,
         };
       });
 

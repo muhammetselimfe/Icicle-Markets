@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Star, Flame, AlertCircle } from 'lucide-react';
+import { Star, Flame, AlertCircle, Lock } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { useMarketTokens, type TokenData } from '@/app/hooks/useTokenPrices';
@@ -199,13 +199,22 @@ export function MarketsView({ onConnectWallet }: MarketsViewProps) {
                       {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleBuyClick(token)}
-                    className="px-4 py-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg font-medium transition-colors min-h-[44px]"
-                    style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                  >
-                    Trade
-                  </button>
+                  {token.restricted ? (
+                    <div className="flex items-center gap-1.5 px-3 py-2.5 bg-yellow-500/10 rounded-lg min-h-[44px]">
+                      <Lock className="w-3.5 h-3.5 text-yellow-500" />
+                      <span className="text-yellow-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                        Institutional
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleBuyClick(token)}
+                      className="px-4 py-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg font-medium transition-colors min-h-[44px]"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Trade
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -333,13 +342,22 @@ export function MarketsView({ onConnectWallet }: MarketsViewProps) {
 
                         {/* Action */}
                         <td className="px-4 py-4 text-center">
-                          <button
-                            onClick={() => handleBuyClick(token)}
-                            className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg font-medium transition-colors"
-                            style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                          >
-                            Trade
-                          </button>
+                          {token.restricted ? (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-yellow-500/10 rounded-lg">
+                              <Lock className="w-3.5 h-3.5 text-yellow-500" />
+                              <span className="text-yellow-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                                Institutional
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleBuyClick(token)}
+                              className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg font-medium transition-colors"
+                              style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                            >
+                              Trade
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

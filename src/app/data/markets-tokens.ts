@@ -11,6 +11,7 @@ export interface MarketToken {
   address: string;
   decimals: number;
   logoUrl?: string;
+  restricted?: boolean;
 }
 
 export const MARKET_CATEGORIES: Record<TokenCategory, string> = {
@@ -35,6 +36,8 @@ interface ListedTokenConfig {
   logoUrl?: string;
   nameOverride?: string;
   symbolOverride?: string;
+  /** Token is not publicly tradable (e.g. institutional only) */
+  restricted?: boolean;
 }
 
 const LISTED_TOKENS: Record<string, ListedTokenConfig> = {
@@ -103,6 +106,12 @@ const LISTED_TOKENS: Record<string, ListedTokenConfig> = {
   },
 
   // ===== DEFI =====
+  // ALOT (Dexalot)
+  '0x093783055f9047c2bff99c4e414501f8a147bc69': {
+    category: 'defi',
+    coingeckoId: 'dexalot',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/24188/small/logo_200x200.png',
+  },
   // JOE
   '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd': {
     category: 'defi',
@@ -179,6 +188,13 @@ const LISTED_TOKENS: Record<string, ListedTokenConfig> = {
     coingeckoId: 'gunz',
     logoUrl: 'https://coin-images.coingecko.com/coins/images/55027/small/gunz.jpg',
   },
+  // NXPC (Nexpace / MapleStory Universe)
+  '0x5e0e90e268bc247cc850c789a0db0d5c7621fb59': {
+    category: 'gaming',
+    coingeckoId: 'nexpace',
+    nameOverride: 'Nexpace',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/55703/small/wk63iOZz_400x400.png',
+  },
 
   // ===== RWA (Real World Assets) =====
   // XAUT0 (Tether Gold - Omnichain)
@@ -188,6 +204,51 @@ const LISTED_TOKENS: Record<string, ListedTokenConfig> = {
     logoUrl: 'https://coin-images.coingecko.com/coins/images/66560/small/XAUt0_Token_Icon_Gold.png',
     nameOverride: 'Tether Gold',
     symbolOverride: 'XAUt0',
+  },
+  // BUIDL (BlackRock USD Institutional Digital Liquidity Fund)
+  '0x53fc82f14f009009b440a706e31c9021e1196a2f': {
+    category: 'rwa',
+    coingeckoId: 'blackrock-usd-institutional-digital-liquidity-fund',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/36291/small/blackrock.png',
+    nameOverride: 'BlackRock BUIDL',
+    symbolOverride: 'BUIDL',
+    restricted: true,
+  },
+  // ACRED (Apollo Diversified Credit Securitize Fund)
+  '0x7c64925002bfa705834b118a923e9911bee32875': {
+    category: 'rwa',
+    coingeckoId: 'apollo-diversified-credit-securitize-fund',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/54809/small/ACRED.png',
+    nameOverride: 'Apollo Credit Fund',
+    symbolOverride: 'ACRED',
+    restricted: true,
+  },
+  // VBILL (VanEck Treasury Fund)
+  '0x7f4546ef315efc65336187fe3765ea779ac90183': {
+    category: 'rwa',
+    coingeckoId: 'vaneck-treasury-fund',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/56023/small/vbill_200.png',
+    nameOverride: 'VanEck Treasury Fund',
+    symbolOverride: 'VBILL',
+    restricted: true,
+  },
+  // JAAA (Janus Henderson Anemoy AAA CLO Fund)
+  '0x58f93d6b1ef2f44ec379cb975657c132cbed3b6b': {
+    category: 'rwa',
+    coingeckoId: 'janus-henderson-anemoy-aaa-clo-fund',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/70446/small/jaaa.png',
+    nameOverride: 'JH Anemoy AAA CLO',
+    symbolOverride: 'JAAA',
+    restricted: true,
+  },
+  // JTRSY (Janus Henderson Anemoy Treasury Fund)
+  '0xa5d465251fbcc907f5dd6bb2145488dfc6a2627b': {
+    category: 'rwa',
+    coingeckoId: 'janus-henderson-anemoy-treasury-fund',
+    logoUrl: 'https://coin-images.coingecko.com/coins/images/70445/small/JTRSY.png',
+    nameOverride: 'JH Anemoy Treasury',
+    symbolOverride: 'JTRSY',
+    restricted: true,
   },
 };
 
@@ -251,6 +312,7 @@ export const MARKETS_TOKENS: MarketToken[] = Object.entries(LISTED_TOKENS).map((
     address: address.startsWith('0x') ? address : `0x${address}`,
     decimals,
     logoUrl: config.logoUrl || getLogoUrl(address),
+    ...(config.restricted && { restricted: true }),
   };
 });
 
