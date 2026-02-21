@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAccount, useBalance } from 'wagmi';
 import { formatUnits } from 'viem';
 import { api } from '@/app/services/api';
 import { coingecko, type SimplePriceData } from '@/app/services/coingecko';
 import { MARKETS_TOKENS, type MarketToken } from '@/app/data/markets-tokens';
-import type { TokenBalance, NativeBalance } from '@/app/types/api';
+import type { TokenBalance } from '@/app/types/api';
+import { queryKeys } from './queryKeys';
 
 const NATIVE_AVAX_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-const REFRESH_INTERVAL = 30000; // 30 seconds
 
 export interface PortfolioHolding {
   symbol: string;
@@ -41,17 +42,18 @@ for (const token of MARKETS_TOKENS) {
   addressToCoingeckoId.set(token.address.toLowerCase(), token);
 }
 
+interface PortfolioQueryData {
+  holdings: PortfolioHolding[];
+  totalValue: number;
+  totalChange24h: number;
+  lastUpdated: Date;
+  txCount: number | null;
+  activeSince: Date | null;
+}
+
 export function usePortfolio(): PortfolioData {
   const { address, isConnected } = useAccount();
-
-  const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
-  const [totalValue, setTotalValue] = useState(0);
-  const [totalChange24h, setTotalChange24h] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [txCount, setTxCount] = useState<number | null>(null);
-  const [activeSince, setActiveSince] = useState<Date | null>(null);
+  const queryClient = useQueryClient();
 
   // Native AVAX balance using wagmi
   const { data: nativeBalance, refetch: refetchNative } = useBalance({
@@ -64,22 +66,13 @@ export function usePortfolio(): PortfolioData {
     []
   );
 
-  const fetchPortfolio = useCallback(async () => {
-    if (!isConnected || !address) {
-      setHoldings([]);
-      setTotalValue(0);
-      setTotalChange24h(0);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setError(null);
-
+  const { data, isLoading, error, refetch } = useQuery<PortfolioQueryData>({
+    queryKey: [...queryKeys.portfolio(address ?? ''), nativeBalance?.value?.toString()],
+    queryFn: async () => {
       // Fetch token balances and native balance from indexer in parallel
       const [balancesResponse, nativeResponse] = await Promise.all([
-        api.getAddressBalances(address),
-        api.getAddressNativeBalance(address).catch(() => null), // Fallback if not ready
+        api.getAddressBalances(address!),
+        api.getAddressNativeBalance(address!).catch(() => null),
       ]);
 
       const tokenBalances: TokenBalance[] = balancesResponse.data || [];
@@ -93,26 +86,21 @@ export function usePortfolio(): PortfolioData {
       }
 
       // Extract tx_count and first_tx_time from native response
-      if (nativeResponse?.data) {
-        setTxCount(nativeResponse.data.tx_count ?? null);
-        setActiveSince(nativeResponse.data.first_tx_time ? new Date(nativeResponse.data.first_tx_time) : null);
-      }
+      const txCount = nativeResponse?.data?.tx_count ?? null;
+      const activeSince = nativeResponse?.data?.first_tx_time
+        ? new Date(nativeResponse.data.first_tx_time)
+        : null;
 
       // Collect all CoinGecko IDs we need to fetch prices for
       const coingeckoIds = new Set<string>();
-
-      // Always include native AVAX
       if (nativeAvaxToken) {
         coingeckoIds.add(nativeAvaxToken.coingeckoId);
       }
 
-      // Map token balances to known tokens and collect their CoinGecko IDs
       const tokenMappings: { balance: TokenBalance; token?: MarketToken }[] = [];
-
       for (const bal of tokenBalances) {
         const knownToken = addressToCoingeckoId.get(bal.token.toLowerCase());
         tokenMappings.push({ balance: bal, token: knownToken });
-
         if (knownToken) {
           coingeckoIds.add(knownToken.coingeckoId);
         }
@@ -150,20 +138,18 @@ export function usePortfolio(): PortfolioData {
           priceUsd,
           valueUsd,
           change24h,
-          allocation: 0, // Calculate after totals
+          allocation: 0,
         });
       }
 
       // Add ERC-20 tokens with non-zero balances
       for (const { balance, token } of tokenMappings) {
-        // Skip unknown tokens (potential scams/dust attacks) and zero balances
         if (!token || balance.balance === '0') continue;
 
         const decimals = balance.decimals ?? token.decimals ?? 18;
         const balanceRaw = BigInt(balance.balance);
         const balanceFormatted = formatUnits(balanceRaw, decimals);
 
-        // Get price data from CoinGecko
         const priceData = prices[token.coingeckoId];
         const priceUsd = priceData?.usd ?? 0;
         const change24h = priceData?.usd_24h_change ?? 0;
@@ -205,52 +191,34 @@ export function usePortfolio(): PortfolioData {
       // Sort by value (highest first)
       holdingsWithAllocation.sort((a, b) => b.valueUsd - a.valueUsd);
 
-      setHoldings(holdingsWithAllocation);
-      setTotalValue(total);
-      setTotalChange24h(weightedChange);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error('Portfolio fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch portfolio');
-    } finally {
-      setLoading(false);
-    }
-  }, [isConnected, address, nativeAvaxToken, nativeBalance]);
+      return {
+        holdings: holdingsWithAllocation,
+        totalValue: total,
+        totalChange24h: weightedChange,
+        lastUpdated: new Date(),
+        txCount,
+        activeSince,
+      };
+    },
+    enabled: isConnected && !!address,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
 
-  // Refetch function for manual refresh
-  const refetch = useCallback(() => {
-    setLoading(true);
+  const handleRefetch = useCallback(() => {
     refetchNative();
-    fetchPortfolio();
-  }, [refetchNative, fetchPortfolio]);
-
-  // Initial fetch and auto-refresh
-  useEffect(() => {
-    fetchPortfolio();
-
-    const interval = setInterval(() => {
-      fetchPortfolio();
-    }, REFRESH_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [fetchPortfolio]);
-
-  // Refetch when native balance changes
-  useEffect(() => {
-    if (nativeBalance !== undefined) {
-      fetchPortfolio();
-    }
-  }, [nativeBalance, fetchPortfolio]);
+    queryClient.invalidateQueries({ queryKey: queryKeys.portfolio(address ?? '') });
+  }, [refetchNative, queryClient, address]);
 
   return {
-    holdings,
-    totalValue,
-    totalChange24h,
-    loading,
-    error,
-    lastUpdated,
-    txCount,
-    activeSince,
-    refetch,
+    holdings: data?.holdings ?? [],
+    totalValue: data?.totalValue ?? 0,
+    totalChange24h: data?.totalChange24h ?? 0,
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch portfolio') : null,
+    lastUpdated: data?.lastUpdated ?? null,
+    txCount: data?.txCount ?? null,
+    activeSince: data?.activeSince ?? null,
+    refetch: handleRefetch,
   };
 }

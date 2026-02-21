@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { usePublicClient } from 'wagmi';
 import type { SwapToken } from '@/app/types/swap';
 import { getQuote, parseAmount, type YakQuote } from '@/app/services/yakswap';
+import { queryKeys } from './queryKeys';
 
 interface UseSwapQuoteOptions {
   fromToken: SwapToken | null;
@@ -24,123 +26,75 @@ export function useSwapQuote({
   debounceMs = 500,
 }: UseSwapQuoteOptions): UseSwapQuoteResult {
   const publicClient = usePublicClient();
-  const [quote, setQuote] = useState<YakQuote | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const fetchIdRef = useRef(0);
+  const [debouncedAmount, setDebouncedAmount] = useState(fromAmount);
 
-  const fetchQuote = useCallback(async () => {
-    // Validate inputs
-    if (!fromToken || !toToken) {
-      setQuote(null);
-      setError(null);
-      return;
-    }
+  // Debounce the amount input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAmount(fromAmount);
+    }, debounceMs);
+    return () => clearTimeout(timer);
+  }, [fromAmount, debounceMs]);
 
-    if (!fromAmount || fromAmount === '' || fromAmount === '0') {
-      setQuote(null);
-      setError(null);
-      return;
-    }
+  // Validate inputs before enabling query
+  const sameToken = fromToken && toToken && fromToken.address.toLowerCase() === toToken.address.toLowerCase();
+  const hasValidAmount = !!debouncedAmount && debouncedAmount !== '' && debouncedAmount !== '0';
+  const hasTokens = !!fromToken && !!toToken;
 
-    if (fromToken.address.toLowerCase() === toToken.address.toLowerCase()) {
-      setError('Cannot swap same token');
-      setQuote(null);
-      return;
-    }
-
-    if (!publicClient) {
-      setError('Wallet not connected');
-      setQuote(null);
-      return;
-    }
-
-    // Parse amount
-    let amountIn: bigint;
+  let parsedAmount: bigint | null = null;
+  let parseError: string | null = null;
+  if (hasValidAmount && fromToken) {
     try {
-      amountIn = parseAmount(fromAmount, fromToken.decimals);
-      if (amountIn <= 0n) {
-        setQuote(null);
-        setError(null);
-        return;
-      }
+      parsedAmount = parseAmount(debouncedAmount, fromToken.decimals);
+      if (parsedAmount <= 0n) parsedAmount = null;
     } catch {
-      setError('Invalid amount');
-      setQuote(null);
-      return;
+      parseError = 'Invalid amount';
     }
+  }
 
-    const currentFetchId = ++fetchIdRef.current;
-    setLoading(true);
-    setError(null);
+  const enabled = hasTokens && !sameToken && !!publicClient && !!parsedAmount && !parseError;
 
-    try {
-      const result = await getQuote(publicClient, {
-        amountIn,
-        tokenIn: fromToken.address,
-        tokenOut: toToken.address,
+  const { data, isFetching, error, refetch } = useQuery({
+    queryKey: queryKeys.swapQuote(
+      fromToken?.address ?? '',
+      toToken?.address ?? '',
+      debouncedAmount,
+    ),
+    queryFn: async () => {
+      const result = await getQuote(publicClient!, {
+        amountIn: parsedAmount!,
+        tokenIn: fromToken!.address,
+        tokenOut: toToken!.address,
         maxSteps: 3,
       });
 
-      // Check if this is still the latest request
-      if (currentFetchId !== fetchIdRef.current) {
-        return;
+      if (!result) {
+        throw new Error('No route found for this swap');
       }
+      return result;
+    },
+    enabled,
+    staleTime: 10_000,
+    gcTime: 30_000,
+    retry: 1,
+  });
 
-      if (result) {
-        setQuote(result);
-        setError(null);
-      } else {
-        setQuote(null);
-        setError('No route found for this swap');
-      }
-    } catch (err) {
-      // Check if this is still the latest request
-      if (currentFetchId !== fetchIdRef.current) {
-        return;
-      }
-
-      console.error('Quote fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch quote');
-      setQuote(null);
-    } finally {
-      if (currentFetchId === fetchIdRef.current) {
-        setLoading(false);
-      }
-    }
-  }, [fromToken, toToken, fromAmount, publicClient]);
-
-  // Debounced fetch
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    debounceTimerRef.current = setTimeout(() => {
-      fetchQuote();
-    }, debounceMs);
-
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [fetchQuote, debounceMs]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
+  // Determine error message
+  let errorMessage: string | null = null;
+  if (sameToken) {
+    errorMessage = 'Cannot swap same token';
+  } else if (!publicClient && hasTokens) {
+    errorMessage = 'Wallet not connected';
+  } else if (parseError) {
+    errorMessage = parseError;
+  } else if (error) {
+    errorMessage = error instanceof Error ? error.message : 'Failed to fetch quote';
+  }
 
   return {
-    quote,
-    loading,
-    error,
-    refetch: fetchQuote,
+    quote: enabled ? (data ?? null) : null,
+    loading: isFetching,
+    error: errorMessage,
+    refetch: () => { refetch(); },
   };
 }

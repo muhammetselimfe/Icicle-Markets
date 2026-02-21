@@ -1,4 +1,5 @@
 // Re-export all hooks
+export { queryKeys } from './queryKeys';
 export { useBlocksWebSocket } from './useBlocksWebSocket';
 export { useTransactions } from './useTransactions';
 export { useChainStats } from './useChainStats';

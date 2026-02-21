@@ -1,6 +1,6 @@
 import { http, createConfig } from 'wagmi';
 import { avalanche } from 'wagmi/chains';
-import { injected, walletConnect, metaMask, coinbaseWallet } from 'wagmi/connectors';
+import { walletConnect, metaMask, coinbaseWallet } from 'wagmi/connectors';
 
 // WalletConnect project ID - users should replace with their own
 const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID';
@@ -8,7 +8,6 @@ const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID |
 export const config = createConfig({
   chains: [avalanche],
   connectors: [
-    injected(),
     metaMask({
       dappMetadata: {
         name: 'Icicle Markets',

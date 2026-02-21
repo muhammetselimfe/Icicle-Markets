@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, usePublicClient, useWalletClient, useWaitForTransactionReceipt } from 'wagmi';
 import type { SwapStep, SwapToken } from '@/app/types/swap';
 import {
@@ -30,6 +31,7 @@ export function useSwapExecution(): UseSwapExecutionResult {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState<SwapStep>('idle');
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -42,6 +44,9 @@ export function useSwapExecution(): UseSwapExecutionResult {
   // Update step based on transaction confirmation
   if (txHash && isConfirmed && step === 'swapping') {
     setStep('success');
+    // Invalidate portfolio and transaction history so they refresh immediately
+    queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
   }
 
   const checkAndApprove = useCallback(

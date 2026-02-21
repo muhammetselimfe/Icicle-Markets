@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
+import { queryKeys } from './queryKeys';
 import type { TimeSeriesDataPoint, Granularity, MetricName } from '../types/api';
 
 interface UseTimeSeriesResult {
@@ -15,30 +16,20 @@ export function useTimeSeries(
   limit: number = 24,
   autoRefresh: boolean = false
 ): UseTimeSeriesResult {
-  const [data, setData] = useState<TimeSeriesDataPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTimeSeries = useCallback(async () => {
-    try {
-      setError(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.timeSeries(metric, granularity, limit),
+    queryFn: async () => {
       const response = await api.getTimeSeries(metric, 43114, granularity, limit);
-      setData(response.data.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch time series data');
-    } finally {
-      setLoading(false);
-    }
-  }, [metric, granularity, limit]);
+      return response.data.data;
+    },
+    refetchInterval: autoRefresh ? 60_000 : false,
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    fetchTimeSeries();
-
-    if (autoRefresh) {
-      const interval = setInterval(fetchTimeSeries, 60000); // Refresh every minute
-      return () => clearInterval(interval);
-    }
-  }, [fetchTimeSeries, autoRefresh]);
-
-  return { data, loading, error, refetch: fetchTimeSeries };
+  return {
+    data: data ?? [],
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch time series data') : null,
+    refetch: async () => { await refetch(); },
+  };
 }

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { coingecko, type CoinMarketData } from '../services/coingecko';
-import { MARKETS_TOKENS, type MarketToken, type TokenCategory } from '../data/markets-tokens';
+import { MARKETS_TOKENS, type TokenCategory } from '../data/markets-tokens';
+import { queryKeys } from './queryKeys';
 
 export interface TokenData {
   id: string;
@@ -42,32 +43,21 @@ function transformToken(coin: CoinMarketData): TokenData {
 }
 
 export function useTokenPrices(limit: number = 50): UseTokenPricesResult {
-  const [tokens, setTokens] = useState<TokenData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.tokenPrices(limit),
+    queryFn: async () => {
+      const rawData = await coingecko.getAvalancheTokens(limit);
+      return rawData.map(transformToken);
+    },
+    refetchInterval: 60_000,
+  });
 
-  const fetchTokens = useCallback(async () => {
-    try {
-      setError(null);
-      const data = await coingecko.getAvalancheTokens(limit);
-      const transformed = data.map(transformToken);
-      setTokens(transformed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch token prices');
-    } finally {
-      setLoading(false);
-    }
-  }, [limit]);
-
-  useEffect(() => {
-    fetchTokens();
-
-    // Refresh every 60 seconds (CoinGecko rate limits)
-    const interval = setInterval(fetchTokens, 60000);
-    return () => clearInterval(interval);
-  }, [fetchTokens]);
-
-  return { tokens, loading, error, refetch: fetchTokens };
+  return {
+    tokens: data ?? [],
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch token prices') : null,
+    refetch: async () => { await refetch(); },
+  };
 }
 
 // Hook specifically for AVAX price
@@ -81,36 +71,20 @@ interface UseAvaxPriceResult {
 }
 
 export function useAvaxPrice(): UseAvaxPriceResult {
-  const [data, setData] = useState({
-    price: 0,
-    change24h: 0,
-    marketCap: 0,
-    volume24h: 0,
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.avaxPrice(),
+    queryFn: () => coingecko.getAvaxPrice(),
+    refetchInterval: 30_000,
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchPrice = useCallback(async () => {
-    try {
-      setError(null);
-      const avaxData = await coingecko.getAvaxPrice();
-      setData(avaxData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch AVAX price');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPrice();
-
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchPrice, 30000);
-    return () => clearInterval(interval);
-  }, [fetchPrice]);
-
-  return { ...data, loading, error };
+  return {
+    price: data?.price ?? 0,
+    change24h: data?.change24h ?? 0,
+    marketCap: data?.marketCap ?? 0,
+    volume24h: data?.volume24h ?? 0,
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch AVAX price') : null,
+  };
 }
 
 // Calculate market stats from tokens
@@ -135,24 +109,15 @@ export function useMarketStats(tokens: TokenData[]) {
 
 // Hook for curated market tokens with categories
 export function useMarketTokens(): UseTokenPricesResult {
-  const [tokens, setTokens] = useState<TokenData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTokens = useCallback(async () => {
-    try {
-      setError(null);
-
-      // Get all coingecko IDs from our curated list
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.marketTokens(),
+    queryFn: async () => {
       const coinIds = MARKETS_TOKENS.map(t => t.coingeckoId);
+      const rawData = await coingecko.getMarketData(coinIds, true);
 
-      // Fetch market data for these specific tokens
-      const data = await coingecko.getMarketData(coinIds, true);
-
-      // Map the coingecko data back to our tokens with categories
       const tokenMap = new Map(MARKETS_TOKENS.map(t => [t.coingeckoId, t]));
 
-      const transformed: TokenData[] = data.map((coin: CoinMarketData) => {
+      const transformed: TokenData[] = rawData.map((coin: CoinMarketData) => {
         const marketToken = tokenMap.get(coin.id);
         return {
           id: coin.id,
@@ -171,24 +136,16 @@ export function useMarketTokens(): UseTokenPricesResult {
         };
       });
 
-      // Sort by market cap descending
       transformed.sort((a, b) => b.marketCap - a.marketCap);
+      return transformed;
+    },
+    refetchInterval: 60_000,
+  });
 
-      setTokens(transformed);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch token prices');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTokens();
-
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchTokens, 60000);
-    return () => clearInterval(interval);
-  }, [fetchTokens]);
-
-  return { tokens, loading, error, refetch: fetchTokens };
+  return {
+    tokens: data ?? [],
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch token prices') : null,
+    refetch: async () => { await refetch(); },
+  };
 }

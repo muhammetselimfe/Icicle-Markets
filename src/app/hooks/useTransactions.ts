@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
+import { queryKeys } from './queryKeys';
 import type { Transaction } from '../types/api';
 
 interface UseTransactionsResult {
@@ -10,30 +11,19 @@ interface UseTransactionsResult {
 }
 
 export function useTransactions(limit: number = 10, autoRefresh: boolean = true): UseTransactionsResult {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTransactions = useCallback(async () => {
-    try {
-      setError(null);
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.transactions(43114, limit),
+    queryFn: async () => {
       const response = await api.getTransactions(43114, limit);
-      setTransactions(response.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch transactions');
-    } finally {
-      setLoading(false);
-    }
-  }, [limit]);
+      return response.data;
+    },
+    refetchInterval: autoRefresh ? 10_000 : false,
+  });
 
-  useEffect(() => {
-    fetchTransactions();
-
-    if (autoRefresh) {
-      const interval = setInterval(fetchTransactions, 10000); // Refresh every 10 seconds
-      return () => clearInterval(interval);
-    }
-  }, [fetchTransactions, autoRefresh]);
-
-  return { transactions, loading, error, refetch: fetchTransactions };
+  return {
+    transactions: data ?? [],
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch transactions') : null,
+    refetch: async () => { await refetch(); },
+  };
 }
