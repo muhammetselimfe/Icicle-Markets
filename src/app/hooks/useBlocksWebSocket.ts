@@ -36,7 +36,6 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[WebSocket] Connected to blocks stream');
         setConnected(true);
         setError(null);
       };
@@ -47,11 +46,11 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
 
           if (message.type === 'initial') {
             // Initial batch of blocks
-            console.log('[WebSocket] Received initial blocks:', message.data.length);
+
             setBlocks(message.data.slice(0, MAX_BLOCKS));
           } else if (message.type === 'new_block') {
             // New block - add to front, remove oldest
-            console.log('[WebSocket] New block:', message.data.block_number);
+
             setBlocks(prev => {
               const newBlocks = [message.data, ...prev];
               return newBlocks.slice(0, MAX_BLOCKS);
@@ -74,7 +73,6 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
       };
 
       ws.onclose = (event) => {
-        console.log('[WebSocket] Disconnected, code:', event.code);
         setConnected(false);
         wsRef.current = null;
 
@@ -83,7 +81,6 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
           clearTimeout(reconnectTimeoutRef.current);
         }
         reconnectTimeoutRef.current = setTimeout(() => {
-          console.log('[WebSocket] Attempting to reconnect...');
           connect();
         }, RECONNECT_DELAY);
       };

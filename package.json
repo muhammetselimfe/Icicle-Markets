@@ -72,6 +72,7 @@
     "jsdom": "^25.0.1",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5",
+    "vite-plugin-pwa": "^1.2.0",
     "vitest": "^2.1.8"
   },
   "peerDependencies": {
