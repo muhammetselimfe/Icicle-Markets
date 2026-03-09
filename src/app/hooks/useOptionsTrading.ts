@@ -34,11 +34,19 @@ export function useOptionsTrading() {
         if ((allowance as bigint) >= amount) return true;
 
         setStep('approving');
+        const approveGas = await publicClient.estimateContractGas({
+          address: OPTIONS_CONTRACTS.usdc,
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [OPTIONS_CONTRACTS.core, amount],
+          account: address,
+        });
         const hash = await walletClient.writeContract({
           address: OPTIONS_CONTRACTS.usdc,
           abi: ERC20_ABI,
           functionName: 'approve',
           args: [OPTIONS_CONTRACTS.core, amount],
+          gas: approveGas + approveGas / 4n, // 25% buffer
         });
         await publicClient.waitForTransactionReceipt({ hash });
         return true;
@@ -80,6 +88,19 @@ export function useOptionsTrading() {
         }
 
         setStep('opening');
+        const openGas = await publicClient.estimateContractGas({
+          address: OPTIONS_CONTRACTS.core,
+          abi: CORE_ABI,
+          functionName: 'openPosition',
+          args: [
+            BigInt(params.marketId),
+            params.lowerTick,
+            params.upperTick,
+            params.quantity,
+            params.maxCost,
+          ],
+          account: address,
+        });
         const hash = await walletClient.writeContract({
           address: OPTIONS_CONTRACTS.core,
           abi: CORE_ABI,
@@ -91,6 +112,7 @@ export function useOptionsTrading() {
             params.quantity,
             params.maxCost,
           ],
+          gas: openGas + openGas / 4n,
         });
 
         setTxHash(hash);
@@ -106,7 +128,7 @@ export function useOptionsTrading() {
 
   const closePosition = useCallback(
     async (positionId: number, minProceeds: bigint = 0n) => {
-      if (!walletClient || !publicClient) {
+      if (!address || !walletClient || !publicClient) {
         setError('Wallet not connected');
         setStep('error');
         return;
@@ -118,11 +140,19 @@ export function useOptionsTrading() {
 
       try {
         setStep('closing');
+        const closeGas = await publicClient.estimateContractGas({
+          address: OPTIONS_CONTRACTS.core,
+          abi: CORE_ABI,
+          functionName: 'closePosition',
+          args: [BigInt(positionId), minProceeds],
+          account: address,
+        });
         const hash = await walletClient.writeContract({
           address: OPTIONS_CONTRACTS.core,
           abi: CORE_ABI,
           functionName: 'closePosition',
           args: [BigInt(positionId), minProceeds],
+          gas: closeGas + closeGas / 4n,
         });
 
         setTxHash(hash);
@@ -133,12 +163,12 @@ export function useOptionsTrading() {
         handleTxError(err);
       }
     },
-    [walletClient, publicClient, invalidateOptions],
+    [address, walletClient, publicClient, invalidateOptions],
   );
 
   const claimPayout = useCallback(
     async (positionId: number) => {
-      if (!walletClient || !publicClient) {
+      if (!address || !walletClient || !publicClient) {
         setError('Wallet not connected');
         setStep('error');
         return;
@@ -150,11 +180,19 @@ export function useOptionsTrading() {
 
       try {
         setStep('claiming');
+        const claimGas = await publicClient.estimateContractGas({
+          address: OPTIONS_CONTRACTS.core,
+          abi: CORE_ABI,
+          functionName: 'claimPayout',
+          args: [BigInt(positionId)],
+          account: address,
+        });
         const hash = await walletClient.writeContract({
           address: OPTIONS_CONTRACTS.core,
           abi: CORE_ABI,
           functionName: 'claimPayout',
           args: [BigInt(positionId)],
+          gas: claimGas + claimGas / 4n,
         });
 
         setTxHash(hash);
@@ -165,7 +203,7 @@ export function useOptionsTrading() {
         handleTxError(err);
       }
     },
-    [walletClient, publicClient, invalidateOptions],
+    [address, walletClient, publicClient, invalidateOptions],
   );
 
   function handleTxError(err: unknown) {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Wallet, TrendingUp, Clock, Grid3X3, Coins } from 'lucide-react';
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useReadContract, usePublicClient, useWalletClient } from 'wagmi';
 import { usePrivy, useLogin } from '@privy-io/react-auth';
 import { cn } from '@/app/components/ui/utils';
 import { useOptionsMarkets } from '@/app/hooks/useOptionsMarkets';
@@ -217,6 +217,9 @@ function ClaimTestUsdcButton() {
   const { switchForTab, isSwitching } = useChainSwitch();
   const isWrongChain = chainId !== CHAIN_IDS.FUJI;
 
+  const publicClient = usePublicClient({ chainId: CHAIN_IDS.FUJI });
+  const { data: walletClient } = useWalletClient({ chainId: CHAIN_IDS.FUJI });
+
   const { data: balance, refetch: refetchBalance } = useReadContract({
     address: OPTIONS_CONTRACTS.usdc as `0x${string}`,
     abi: ERC20_ABI,
@@ -226,41 +229,46 @@ function ClaimTestUsdcButton() {
     query: { enabled: !!address },
   });
 
-  const { writeContract, data: txHash, isPending, reset } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash: txHash,
-    chainId: CHAIN_IDS.FUJI,
-  });
-
-  useEffect(() => {
-    if (isSuccess) {
-      refetchBalance();
-      const timer = setTimeout(() => reset(), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isSuccess, refetchBalance, reset]);
+  const [mintState, setMintState] = useState<'idle' | 'pending' | 'confirming' | 'success'>('idle');
 
   const handleClaim = async () => {
     if (isWrongChain) {
       await switchForTab('options');
       return;
     }
-    if (!address) return;
-    writeContract({
-      address: OPTIONS_CONTRACTS.usdc as `0x${string}`,
-      abi: ERC20_ABI,
-      functionName: 'mint',
-      args: [address, FAUCET_AMOUNT],
-      chainId: CHAIN_IDS.FUJI,
-    });
+    if (!address || !publicClient || !walletClient) return;
+    try {
+      setMintState('pending');
+      const gas = await publicClient.estimateContractGas({
+        address: OPTIONS_CONTRACTS.usdc as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'mint',
+        args: [address, FAUCET_AMOUNT],
+        account: address,
+      });
+      const hash = await walletClient.writeContract({
+        address: OPTIONS_CONTRACTS.usdc as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: 'mint',
+        args: [address, FAUCET_AMOUNT],
+        gas: gas + gas / 4n,
+      });
+      setMintState('confirming');
+      await publicClient.waitForTransactionReceipt({ hash });
+      setMintState('success');
+      refetchBalance();
+      setTimeout(() => setMintState('idle'), 3000);
+    } catch {
+      setMintState('idle');
+    }
   };
 
   const balanceStr = balance !== undefined ? formatUsdc(balance as bigint) : '...';
-  const isBusy = isPending || isConfirming || isSwitching;
+  const isSuccess = mintState === 'success';
+  const isBusy = mintState !== 'idle' && mintState !== 'success' || isSwitching;
 
   return (
-    <div className="flex items-center gap-3 shrink-0">
+    <div className="flex items-center gap-3 w-full sm:w-auto">
       <span className="text-slate-400" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
         Balance: <span className="text-white font-medium">{balanceStr}</span>
       </span>

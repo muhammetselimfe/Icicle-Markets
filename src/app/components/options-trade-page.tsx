@@ -887,7 +887,7 @@ export function OptionsTradePage() {
   }, [cost, slippage]);
 
   const hasInsufficientBalance = useMemo(() => {
-    if (!maxCost || !usdcBalance) return false;
+    if (!maxCost || usdcBalance === undefined) return false;
     return maxCost > (usdcBalance as bigint);
   }, [maxCost, usdcBalance]);
 

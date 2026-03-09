@@ -1,3 +1,6 @@
+import { Buffer } from 'buffer';
+globalThis.Buffer = Buffer;
+
 import { createRoot } from "react-dom/client";
 import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider } from '@privy-io/wagmi';
