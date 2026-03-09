@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAccount } from 'wagmi';
+import { usePrivy, useLogin } from '@privy-io/react-auth';
 import {
   Wallet,
   TrendingUp,
@@ -23,10 +24,6 @@ import { useTransactionHistory, type Transaction, type TransactionType } from '@
 import { SwapModal } from '@/app/components/swap-modal';
 import { cn } from '@/app/components/ui/utils';
 
-interface PortfolioViewProps {
-  isWalletConnected: boolean;
-  onConnectWallet: () => void;
-}
 
 // ============================================================
 // UTILITY FUNCTIONS
@@ -502,7 +499,16 @@ function TransactionsTab({
 // MAIN PORTFOLIO VIEW
 // ============================================================
 
-export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioViewProps) {
+export function PortfolioView() {
+  const { authenticated, logout } = usePrivy();
+  const { login } = useLogin();
+
+  const handleLogin = async () => {
+    if (authenticated) {
+      await logout();
+    }
+    login();
+  };
   const { address } = useAccount();
   const { holdings, totalValue, totalChange24h, loading: holdingsLoading, error: holdingsError, lastUpdated, txCount, activeSince, refetch: refetchHoldings } = usePortfolio();
   const { transactions, loading: txLoading, error: txError, refetch: refetchTx } = useTransactionHistory();
@@ -531,7 +537,7 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
   };
 
   // Not connected state
-  if (!isWalletConnected) {
+  if (!authenticated) {
     return (
       <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
         <div className="max-w-md mx-auto">
@@ -540,21 +546,21 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
               <Wallet className="w-8 h-8 text-slate-400" />
             </div>
             <h2 className="text-white text-xl font-semibold mb-3" style={{ fontFamily: "Inter, sans-serif" }}>
-              Connect your wallet
+              Sign in to get started
             </h2>
             <p className="text-slate-400 mb-8 leading-relaxed" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-              Track and manage your Avalanche assets. Connect your wallet to view your portfolio.
+              Track and manage your Avalanche assets. Sign in to view your portfolio.
             </p>
             <button
-              onClick={onConnectWallet}
+              onClick={() => handleLogin()}
               className="bg-white text-black px-6 py-3 rounded-xl font-medium hover:bg-white/90 transition-colors"
               style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
             >
-              Connect Wallet
+              Sign In
             </button>
             <div className="mt-8 pt-6 border-t border-white/10">
               <p className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                Supports MetaMask, Core, Coinbase, WalletConnect
+                Sign in with email, Google, or your favorite wallet
               </p>
             </div>
           </div>
@@ -598,6 +604,10 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                Avalanche Mainnet
+              </span>
             </div>
             {activeSince && (
               <div className="flex items-center gap-1.5 text-slate-400">
@@ -704,7 +714,6 @@ export function PortfolioView({ isWalletConnected, onConnectWallet }: PortfolioV
           setSelectedToken(null);
         }}
         initialToToken={selectedToken ?? undefined}
-        onConnectWallet={onConnectWallet}
       />
     </div>
   );

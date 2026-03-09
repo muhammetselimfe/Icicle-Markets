@@ -192,6 +192,21 @@ class CoinGeckoClient {
     return response.data;
   }
 
+  // Get market chart data (price history over time)
+  async getMarketChart(
+    coinId: string,
+    days: number = 1
+  ): Promise<{ prices: [number, number][] }> {
+    const params = new URLSearchParams({
+      vs_currency: 'usd',
+      days: days.toString(),
+    });
+
+    return this.fetch<{ prices: [number, number][] }>(
+      `/coins/${coinId}/market_chart?${params}`
+    );
+  }
+
   // Clear cache (useful for manual refresh)
   clearCache(): void {
     this.cache.clear();

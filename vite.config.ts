@@ -30,6 +30,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB — Privy adds ~2.7 MB bundle
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         runtimeCaching: [
           {
@@ -77,7 +78,8 @@ export default defineConfig({
       '@tanstack/react-query',
       'wagmi',
       'wagmi/chains',
-      'wagmi/connectors',
+      '@privy-io/react-auth',
+      '@privy-io/wagmi',
       'viem',
       'viem/chains',
       'viem/accounts',

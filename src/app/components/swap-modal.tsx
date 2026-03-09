@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, ChevronDown, ChevronUp, Settings, AlertTriangle, ExternalLink, Loader2, Check } from 'lucide-react';
 import { useAccount, useBalance, useChainId, useReadContract } from 'wagmi';
+import { usePrivy, useLogin } from '@privy-io/react-auth';
 import { erc20Abi } from 'viem';
 import { formatUnits } from 'viem';
 import { cn } from '@/app/components/ui/utils';
@@ -9,6 +10,8 @@ import { SLIPPAGE_OPTIONS, DEFAULT_SLIPPAGE, MIN_SLIPPAGE, MAX_SLIPPAGE } from '
 import { getTokensByChainId, getDefaultFromToken, getDefaultToToken, getTokenByAddress, isTokenListed } from '@/app/data/swap-tokens';
 import { useSwapQuote } from '@/app/hooks/useSwapQuote';
 import { useSwapExecution } from '@/app/hooks/useSwapExecution';
+import { useChainSwitch } from '@/app/hooks/useChainSwitch';
+import { CHAIN_IDS } from '@/app/config/wagmi';
 import { formatAmount, getAdapterName, WAVAX_ADDRESS } from '@/app/services/yakswap';
 
 // Token logo with fallback
@@ -36,12 +39,23 @@ interface SwapModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialToToken?: { symbol: string; address?: string };
-  onConnectWallet?: () => void;
 }
 
-export function SwapModal({ isOpen, onClose, initialToToken, onConnectWallet }: SwapModalProps) {
+export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
+  const { login } = useLogin();
+  const { authenticated, logout } = usePrivy();
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
+
+  const { switchForTab, isSwitching } = useChainSwitch();
+  const isWrongChain = isConnected && chainId !== CHAIN_IDS.MAINNET;
+
+  const handleLogin = async () => {
+    if (authenticated) {
+      await logout();
+    }
+    login();
+  };
 
   const tokens = useMemo(() => getTokensByChainId(chainId), [chainId]);
 
@@ -262,7 +276,11 @@ export function SwapModal({ isOpen, onClose, initialToToken, onConnectWallet }: 
 
   const handleSwapClick = async () => {
     if (!isConnected) {
-      onConnectWallet?.();
+      handleLogin();
+      return;
+    }
+    if (isWrongChain) {
+      await switchForTab('markets');
       return;
     }
     if (!quote) return;
@@ -297,7 +315,8 @@ export function SwapModal({ isOpen, onClose, initialToToken, onConnectWallet }: 
   }, [tokens, showTokenSelect, fromToken.address, toToken.address]);
 
   const getButtonText = () => {
-    if (!isConnected) return 'Connect Wallet';
+    if (!isConnected) return 'Sign In';
+    if (isWrongChain) return isSwitching ? 'Switching...' : 'Switch to Avalanche';
     if (!fromAmount || fromAmount === '0') return 'Enter Amount';
     if (hasInsufficientBalance) return 'Insufficient Balance';
     if (quoteLoading) return 'Getting Quote...';
@@ -310,7 +329,8 @@ export function SwapModal({ isOpen, onClose, initialToToken, onConnectWallet }: 
   };
 
   const isButtonDisabled = () => {
-    if (!isConnected) return false; // Allow clicking to connect wallet
+    if (!isConnected) return false;
+    if (isWrongChain) return isSwitching;
     if (!fromAmount || fromAmount === '0') return true;
     if (hasInsufficientBalance) return true;
     if (quoteLoading) return true;
@@ -664,8 +684,20 @@ export function SwapModal({ isOpen, onClose, initialToToken, onConnectWallet }: 
             </div>
           )}
 
+          {/* Wrong Network Warning */}
+          {isWrongChain && (
+            <div className="px-5 pb-4">
+              <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
+                <span className="text-yellow-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                  Switch to Avalanche network to trade
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Error Display */}
-          {(quoteError || execError) && (
+          {!isWrongChain && (quoteError || execError) && (
             <div className="px-5 pb-4">
               <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
                 <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />

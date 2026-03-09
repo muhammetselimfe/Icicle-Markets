@@ -1,17 +1,20 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Wallet, Settings, ChevronDown, LogOut, Loader2, Menu, X } from 'lucide-react';
+import { useAccount, useChainId, useDisconnect } from 'wagmi';
+import { usePrivy, useLogin } from '@privy-io/react-auth';
+import { Search, ChevronDown, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Input } from '@/app/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/app/components/ui/dropdown-menu';
 import { BRAND } from '@/app/constants/brand';
 import { api } from '@/app/services/api';
-
-interface HeaderProps {
-  onConnectWallet: () => void;
-  onDisconnectWallet: () => void;
-  isWalletConnected: boolean;
-  walletAddress?: string;
-}
+import { CHAIN_IDS } from '@/app/config/wagmi';
 
 // Detect search type from input
 function detectSearchType(query: string): 'tx' | 'address' | 'block' | 'unknown' {
@@ -35,13 +38,43 @@ function detectSearchType(query: string): 'tx' | 'address' | 'block' | 'unknown'
   return 'unknown';
 }
 
-export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected, walletAddress }: HeaderProps) {
+export function Header() {
   const navigate = useNavigate();
-  const [showWalletMenu, setShowWalletMenu] = useState(false);
+  const currentChainId = useChainId();
+  const { address, isConnected } = useAccount();
+  const { logout, authenticated } = usePrivy();
+  const { login } = useLogin();
+  const { disconnect } = useDisconnect();
+
+  const handleLogin = async () => {
+    if (authenticated) {
+      // Clear stale Privy session before re-login
+      await logout();
+    }
+    login();
+  };
+
+  const handleDisconnect = async () => {
+    disconnect();
+    await logout();
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+
+  const isFuji = currentChainId === CHAIN_IDS.FUJI;
+  const networkLabel = isFuji ? 'Testnet' : 'Avalanche';
+  const networkDotColor = isFuji ? 'bg-yellow-500' : 'bg-green-500';
+
+  const handleCopyAddress = useCallback(() => {
+    if (address) {
+      navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [address]);
 
   const handleSearch = useCallback(async () => {
     const query = searchQuery.trim();
@@ -128,24 +161,24 @@ export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected,
           </div>
 
           {/* Search */}
-          <div className="flex-1 max-w-2xl">
+          <div className="flex-1">
             <div className="relative">
               <div className={cn(
-                "relative bg-white/5 rounded-xl",
+                "relative border border-white/10 rounded-xl",
                 searchError && "ring-1 ring-red-500"
               )}>
                 {searching ? (
-                  <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+                  <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 animate-spin" />
                 ) : (
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 )}
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Search tx hash, address, block..."
-                  className="pl-11 pr-4 py-3 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                  placeholder="Search for transaction, address, block..."
+                  className="pl-12 pr-4 py-4 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0"
+                  style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
                   disabled={searching}
                 />
               </div>
@@ -162,80 +195,48 @@ export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected,
 
           {/* Actions */}
           <div className="flex items-center gap-3">
-            {isWalletConnected ? (
-              <>
-                {/* Network Badge */}
-                <div className="bg-white/5 px-3 py-2 flex items-center gap-2 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
-                  <span
-                    className="text-slate-400"
-                    style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                  >
-                    Avalanche
-                  </span>
-                </div>
-
-                {/* Wallet Address with Dropdown */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowWalletMenu(!showWalletMenu)}
-                    className="bg-white/5 px-4 py-2 hover:bg-white/10 transition-colors rounded-lg flex items-center gap-2"
-                  >
-                    <Wallet className="w-4 h-4 text-slate-400" />
-                    <span
-                      className="text-white font-medium"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                    >
-                      {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
-                    </span>
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
+            {isConnected ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="relative w-10 h-10 rounded-full bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center outline-none">
+                    <CircleUserRound className="w-5 h-5 text-slate-300" />
+                    <div className={cn("absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-[#0f1535]", networkDotColor)} />
                   </button>
-
-                  {showWalletMenu && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-40"
-                        onClick={() => setShowWalletMenu(false)}
-                      />
-                      <div className="absolute top-full right-0 mt-2 z-50 border border-white/10 bg-[#0f1535] min-w-[160px] rounded-xl overflow-hidden">
-                        <button
-                          onClick={() => {
-                            onDisconnectWallet();
-                            setShowWalletMenu(false);
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-white/5 transition-colors flex items-center gap-2"
-                        >
-                          <LogOut className="w-4 h-4 text-red-500" />
-                          <span
-                            className="text-red-500"
-                            style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                          >
-                            Disconnect
-                          </span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[200px] bg-[#0f1535] border-white/10">
+                  <div className="px-3 py-2 border-b border-white/10">
+                    <p className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                      {address?.slice(0, 6)}...{address?.slice(-4)}
+                    </p>
+                    <p className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                      {networkLabel}
+                    </p>
+                  </div>
+                  <DropdownMenuItem onClick={() => navigate('/portfolio')} className="flex items-center gap-2 text-slate-200 focus:text-white">
+                    <Wallet className="w-4 h-4 text-slate-400" />
+                    <span>Portfolio</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCopyAddress} className="flex items-center gap-2 text-slate-200 focus:text-white">
+                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+                    <span>{copied ? 'Copied!' : 'Copy Address'}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleDisconnect} className="flex items-center gap-2 text-red-500 focus:text-red-500">
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <button
-                onClick={onConnectWallet}
-                className="bg-white/10 px-5 py-2.5 hover:bg-white/15 transition-all rounded-lg flex items-center gap-2"
+                onClick={() => handleLogin()}
+                className="bg-white/10 px-5 py-2.5 hover:bg-white/15 transition-all rounded-xl flex items-center gap-2"
               >
-                <Wallet className="w-4 h-4 text-white" />
-                <span
-                  className="text-white font-medium"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                >
-                  Connect Wallet
+                <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                  Sign In
                 </span>
               </button>
             )}
-
-            <button className="bg-white/5 p-2.5 hover:bg-white/10 transition-colors rounded-lg text-slate-400 hover:text-white">
-              <Settings className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
@@ -296,34 +297,54 @@ export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected,
 
             {/* Wallet Section */}
             <div className="flex-1">
-              {isWalletConnected ? (
+              {isConnected ? (
                 <div className="space-y-3">
-                  {/* Network Badge */}
-                  <div className="bg-white/5 px-4 py-3 flex items-center gap-2 rounded-lg">
-                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                    <span
-                      className="text-slate-400"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                    >
-                      Avalanche
-                    </span>
-                  </div>
-
-                  {/* Wallet Address */}
+                  {/* Address Display */}
                   <div className="bg-white/5 px-4 py-3 rounded-lg flex items-center gap-2">
-                    <Wallet className="w-4 h-4 text-slate-400" />
+                    <div className={cn("w-2 h-2 rounded-full", networkDotColor)} />
                     <span
                       className="text-white font-medium"
                       style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                     >
-                      {walletAddress?.slice(0, 6)}...{walletAddress?.slice(-4)}
+                      {address?.slice(0, 6)}...{address?.slice(-4)}
                     </span>
                   </div>
 
-                  {/* Disconnect */}
+                  {/* Portfolio */}
                   <button
                     onClick={() => {
-                      onDisconnectWallet();
+                      navigate('/portfolio');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                  >
+                    <Wallet className="w-4 h-4 text-slate-400" />
+                    <span
+                      className="text-slate-300"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Portfolio
+                    </span>
+                  </button>
+
+                  {/* Copy Address */}
+                  <button
+                    onClick={handleCopyAddress}
+                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                  >
+                    {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
+                    <span
+                      className="text-slate-300"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      {copied ? 'Copied!' : 'Copy Address'}
+                    </span>
+                  </button>
+
+                  {/* Sign Out */}
+                  <button
+                    onClick={async () => {
+                      await handleDisconnect();
                       setMobileMenuOpen(false);
                     }}
                     className="w-full px-4 py-3 bg-red-500/10 rounded-lg flex items-center gap-2 hover:bg-red-500/20 transition-colors"
@@ -333,34 +354,27 @@ export function Header({ onConnectWallet, onDisconnectWallet, isWalletConnected,
                       className="text-red-500"
                       style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                     >
-                      Disconnect
+                      Sign Out
                     </span>
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={() => {
-                    onConnectWallet();
+                    handleLogin();
                     setMobileMenuOpen(false);
                   }}
                   className="w-full bg-white/10 px-5 py-3 hover:bg-white/15 transition-all rounded-lg flex items-center justify-center gap-2"
                 >
-                  <Wallet className="w-4 h-4 text-white" />
                   <span
                     className="text-white font-medium"
                     style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                   >
-                    Connect Wallet
+                    Sign In
                   </span>
                 </button>
               )}
             </div>
-
-            {/* Settings at bottom */}
-            <button className="mt-6 w-full bg-white/5 p-3 hover:bg-white/10 transition-colors rounded-lg text-slate-400 hover:text-white flex items-center justify-center gap-2">
-              <Settings className="w-5 h-5" />
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Settings</span>
-            </button>
           </div>
         </div>
       )}

@@ -1,43 +1,27 @@
-import { http, createConfig } from 'wagmi';
-import { avalanche } from 'wagmi/chains';
-import { walletConnect, metaMask, coinbaseWallet } from 'wagmi/connectors';
-
-// WalletConnect project ID - users should replace with their own
-const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID';
+import { http } from 'wagmi';
+import { avalanche, avalancheFuji } from 'wagmi/chains';
+import { createConfig } from '@privy-io/wagmi';
 
 export const config = createConfig({
-  chains: [avalanche],
-  connectors: [
-    metaMask({
-      dappMetadata: {
-        name: 'Icicle Markets',
-        url: 'https://iciclemarkets.com',
-        iconUrl: 'https://iciclemarkets.com/logo-icon.svg',
-      },
-    }),
-    coinbaseWallet({
-      appName: 'Icicle Markets',
-      appLogoUrl: 'https://iciclemarkets.com/logo-icon.svg',
-    }),
-    walletConnect({
-      projectId: WALLETCONNECT_PROJECT_ID,
-      metadata: {
-        name: 'Icicle Markets',
-        description: 'Modern blockchain explorer for Avalanche',
-        url: 'https://iciclemarkets.com',
-        icons: ['https://iciclemarkets.com/logo-icon.svg'],
-      },
-      showQrModal: true,
-    }),
-  ],
+  chains: [avalanche, avalancheFuji],
   transports: {
     [avalanche.id]: http(),
+    [avalancheFuji.id]: http('https://api.avax-test.network/ext/bc/C/rpc'),
   },
 });
 
 // Chain constants
 export const CHAIN_IDS = {
   MAINNET: avalanche.id,
+  FUJI: avalancheFuji.id,
+} as const;
+
+// Icicle Options contract addresses (Avalanche Fuji)
+export const OPTIONS_CONTRACTS = {
+  core: '0x5163b4aB77650D1D937a5c5E6B0d012e4659546e' as const,
+  position: '0x3FD90718b2aA7D15417d1d494b653c7EF44dff70' as const,
+  lpShare: '0xf8Ea96283fA5726fb64f3C57695a333Ce007B56a' as const,
+  usdc: '0x12ecFc9715cEA5DAd986F5B59848aEc7044e66E8' as const,
 } as const;
 
 // Native token addresses

@@ -1,11 +1,16 @@
-import { useState } from 'react';
-import { Star, Flame, AlertCircle, Lock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Star, Flame, AlertCircle, Lock, TrendingUp, Clock, ArrowRight } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { useMarketTokens, type TokenData } from '@/app/hooks/useTokenPrices';
 import { formatUSD } from '@/app/utils/formatters';
 import { type TokenCategory } from '@/app/data/markets-tokens';
 import { SwapModal } from '@/app/components/swap-modal';
+import { useOptionsMarkets } from '@/app/hooks/useOptionsMarkets';
+import { MarketState } from '@/app/types/options';
+import { formatTickAsPrice } from '@/app/utils/options';
+import { useRedstonePrice } from '@/app/hooks/useRedstonePrice';
 
 // Loading skeleton component
 function Skeleton({ className = '' }: { className?: string }) {
@@ -32,11 +37,112 @@ function transformSparkline(prices: number[]): { value: number }[] {
 // Category tabs mapping
 const CATEGORY_TABS: TokenCategory[] = ['majors', 'defi', 'gaming', 'stablecoins', 'meme', 'liquid-staking', 'rwa'];
 
-interface MarketsViewProps {
-  onConnectWallet?: () => void;
+function useCountdown(targetUnix: number) {
+  const [remaining, setRemaining] = useState(() => Math.max(0, targetUnix - Math.floor(Date.now() / 1000)));
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const id = setInterval(() => {
+      const left = Math.max(0, targetUnix - Math.floor(Date.now() / 1000));
+      setRemaining(left);
+      if (left <= 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [targetUnix]);
+
+  if (remaining <= 0) return null;
+  const h = Math.floor(remaining / 3600);
+  const m = Math.floor((remaining % 3600) / 60);
+  const s = remaining % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m ${s}s`;
 }
 
-export function MarketsView({ onConnectWallet }: MarketsViewProps) {
+function OptionsMarketCard({ market: m, onClick }: { market: import('@/app/types/options').MarketDisplay; onClick: () => void }) {
+  const { price } = useRedstonePrice(m.feedId);
+  const countdown = useCountdown(m.tradingEnd);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  const fmtPrice = m.priceDecimals === 0
+    ? `$${Math.round(price).toLocaleString()}`
+    : `$${price.toFixed(2)}`;
+
+  return (
+    <div
+      onClick={onClick}
+      className="group relative bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden cursor-pointer transition-all hover:bg-white/[0.06] hover:border-white/10"
+    >
+      {/* Top accent line */}
+      <div className="h-[2px]" style={{ background: `linear-gradient(to right, ${m.accentColor}, transparent)` }} />
+
+      <div className="p-5 space-y-4">
+        {/* Header: logo + asset info + live price */}
+        <div className="flex items-center gap-3">
+          {!m.assetLogo || logoFailed ? (
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white text-sm font-bold shrink-0">
+              {m.assetSymbol.slice(0, 2)}
+            </div>
+          ) : (
+            <img src={m.assetLogo} alt={m.assetSymbol} className="w-10 h-10 rounded-full shrink-0" onError={() => setLogoFailed(true)} />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px' }}>
+              {m.assetSymbol}/USD
+            </div>
+            <div className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+              {m.assetName}
+            </div>
+          </div>
+          {price > 0 && (
+            <div className="text-right">
+              <div className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px' }}>
+                {fmtPrice}
+              </div>
+              <div className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px' }}>
+                Live
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Range + countdown row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-slate-300" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+              {formatTickAsPrice(m.minTick, m.tickDivisor)} – {formatTickAsPrice(m.maxTick, m.tickDivisor)}
+            </span>
+          </div>
+          {countdown && (
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-green-400" />
+              <span className="text-green-400 font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                {countdown}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* CTA */}
+        <div
+          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl transition-colors"
+          style={{
+            fontFamily: 'Inter, sans-serif',
+            fontSize: '13px',
+            background: `${m.accentColor}15`,
+            color: m.accentColor,
+          }}
+        >
+          <span className="font-medium">Trade Options</span>
+          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MarketsView() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('trending');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
@@ -44,6 +150,13 @@ export function MarketsView({ onConnectWallet }: MarketsViewProps) {
 
   // Fetch data from curated list
   const { tokens, loading: tokensLoading, error: tokensError } = useMarketTokens();
+
+  // Fetch active options markets for trending cards
+  const { markets: optionsMarkets, loading: optionsLoading } = useOptionsMarkets();
+  const activeOptions = optionsMarkets
+    .filter(m => m.state === MarketState.Trading)
+    .sort((a, b) => b.marketId - a.marketId)
+    .slice(0, 3);
 
   const tabs = [
     { id: 'favorites', label: '', icon: Star, iconOnly: true },
@@ -97,6 +210,65 @@ export function MarketsView({ onConnectWallet }: MarketsViewProps) {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
+      {/* Trending Options Markets */}
+      {activeOptions.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Flame className="w-4 h-4 text-orange-400" />
+              <span className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+                Trending Options
+              </span>
+            </div>
+            <button
+              onClick={() => navigate('/options')}
+              className="flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
+              style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}
+            >
+              View All
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeOptions.map(m => (
+              <OptionsMarketCard
+                key={m.marketId}
+                market={m}
+                onClick={() => navigate(`/options/trade/${m.marketId}`)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Loading skeleton for options */}
+      {optionsLoading && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <span className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+              Trending Options
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <div className="flex-1">
+                    <Skeleton className="h-4 w-20 mb-1.5" />
+                    <Skeleton className="h-3 w-14" />
+                  </div>
+                  <Skeleton className="h-5 w-16" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Pill-style Tabs */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex gap-1 p-1 bg-white/5 rounded-xl overflow-x-auto scrollbar-hide">
@@ -377,7 +549,6 @@ export function MarketsView({ onConnectWallet }: MarketsViewProps) {
           setSelectedToken(null);
         }}
         initialToToken={selectedToken ?? undefined}
-        onConnectWallet={onConnectWallet}
       />
     </div>
   );

@@ -1,40 +1,24 @@
-import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { X, Wallet, QrCode, ExternalLink } from 'lucide-react';
-import { isMobile, getWalletDeepLink } from '@/app/utils/mobile';
 import { Header } from '@/app/components/header';
 import { Navigation } from '@/app/components/navigation';
 import { Footer } from '@/app/components/footer';
 import { MarketsView } from '@/app/components/markets-view';
 import { PortfolioView } from '@/app/components/portfolio-view';
 import { ExplorerView } from '@/app/components/explorer-view';
+import { OptionsView } from '@/app/components/options-view';
+import { OptionsTradePage } from '@/app/components/options-trade-page';
 import { BlockPage, TransactionPage, AddressPage } from '@/app/pages';
 import { Toaster } from '@/app/components/ui/sonner';
 
 function AppContent() {
   const location = useLocation();
   const navigate = useNavigate();
-  const [showWalletModal, setShowWalletModal] = useState(false);
-
-  const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
-
-  // Auto-connect when in wallet's in-app browser (window.ethereum is injected)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.ethereum && !isConnected && !isPending) {
-      const injectedConnector = connectors.find(c => c.id === 'injected');
-      if (injectedConnector) {
-        connect({ connector: injectedConnector });
-      }
-    }
-  }, []); // Run once on mount
 
   // Determine active tab from URL
   const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/portfolio') return 'portfolio';
+    if (path === '/options' || path.startsWith('/options/')) return 'options';
     if (path === '/explorer' || path.startsWith('/block') || path.startsWith('/tx') || path.startsWith('/address')) return 'explorer';
     return 'markets';
   };
@@ -49,26 +33,13 @@ function AppContent() {
       case 'portfolio':
         navigate('/portfolio');
         break;
+      case 'options':
+        navigate('/options');
+        break;
       case 'explorer':
         navigate('/explorer');
         break;
     }
-  };
-
-  const handleConnectWallet = () => {
-    setShowWalletModal(true);
-  };
-
-  const handleSelectConnector = (connectorId: string) => {
-    const connector = connectors.find(c => c.id === connectorId);
-    if (connector) {
-      connect({ connector });
-      setShowWalletModal(false);
-    }
-  };
-
-  const handleDisconnectWallet = () => {
-    disconnect();
   };
 
   // Check if we're on a detail page (block, tx, address)
@@ -113,27 +84,16 @@ function AppContent() {
         }
       `}</style>
 
-      <Header
-        onConnectWallet={handleConnectWallet}
-        onDisconnectWallet={handleDisconnectWallet}
-        isWalletConnected={isConnected}
-        walletAddress={address}
-      />
+      <Header />
       {!isDetailPage && (
         <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       )}
       <main className="flex-1 pb-8 relative z-10">
         <Routes>
-          <Route path="/" element={<MarketsView onConnectWallet={handleConnectWallet} />} />
-          <Route
-            path="/portfolio"
-            element={
-              <PortfolioView
-                isWalletConnected={isConnected}
-                onConnectWallet={handleConnectWallet}
-              />
-            }
-          />
+          <Route path="/" element={<MarketsView />} />
+          <Route path="/portfolio" element={<PortfolioView />} />
+          <Route path="/options" element={<OptionsView />} />
+          <Route path="/options/trade/:marketId" element={<OptionsTradePage />} />
           <Route path="/explorer" element={<ExplorerView />} />
           <Route path="/block/:blockNumber" element={<BlockPage />} />
           <Route path="/tx/:hash" element={<TransactionPage />} />
@@ -142,184 +102,6 @@ function AppContent() {
       </main>
       <Footer />
       <Toaster theme="dark" />
-
-      {/* Wallet Selection Modal */}
-      {showWalletModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setShowWalletModal(false)} />
-          <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-sm rounded-2xl max-h-[90vh] overflow-y-auto">
-            <div className="relative z-10">
-              <div className="flex items-center justify-between p-4 md:p-5 border-b border-white/10">
-                <h2
-                  className="text-white font-medium"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}
-                >
-                  Connect Wallet
-                </h2>
-                <button
-                  onClick={() => setShowWalletModal(false)}
-                  className="text-slate-400 hover:text-white transition-colors p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-4 space-y-3">
-                {/* Mobile: Use direct deep links for all wallets */}
-                {isMobile() ? (
-                  <>
-                    {/* MetaMask - Direct deep link */}
-                    <a
-                      href={getWalletDeepLink('metamask')}
-                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-[#f6851b]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
-                        </div>
-                        <div className="text-left flex-1">
-                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                            MetaMask
-                          </div>
-                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                            Open in MetaMask app
-                          </div>
-                        </div>
-                        <ExternalLink className="w-4 h-4 text-slate-500" />
-                      </div>
-                    </a>
-
-                    {/* Core Wallet - Direct deep link */}
-                    <a
-                      href={getWalletDeepLink('core')}
-                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg font-bold text-white">C</span>
-                        </div>
-                        <div className="text-left flex-1">
-                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                            Core Wallet
-                          </div>
-                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                            Open in Core app
-                          </div>
-                        </div>
-                        <ExternalLink className="w-4 h-4 text-slate-500" />
-                      </div>
-                    </a>
-
-                    {/* Coinbase Wallet - Direct deep link */}
-                    <a
-                      href={getWalletDeepLink('coinbase')}
-                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all block min-h-[72px]"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-[#0052ff]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <div className="w-6 h-6 bg-[#0052ff] rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">C</span>
-                          </div>
-                        </div>
-                        <div className="text-left flex-1">
-                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                            Coinbase Wallet
-                          </div>
-                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                            Open in Coinbase app
-                          </div>
-                        </div>
-                        <ExternalLink className="w-4 h-4 text-slate-500" />
-                      </div>
-                    </a>
-
-                    {/* WalletConnect for other wallets */}
-                    {connectors.find(c => c.id === 'walletConnect') && (
-                      <button
-                        onClick={() => handleSelectConnector('walletConnect')}
-                        disabled={isPending}
-                        className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-[#3b99fc]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <QrCode className="w-5 h-5 text-[#3b99fc]" />
-                          </div>
-                          <div className="text-left">
-                            <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                              Other Wallets
-                            </div>
-                            <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                              Use WalletConnect
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  /* Desktop: Show all connectors */
-                  connectors.map((connector) => (
-                    <button
-                      key={connector.id}
-                      onClick={() => handleSelectConnector(connector.id)}
-                      disabled={isPending}
-                      className="w-full bg-white/5 p-4 rounded-xl hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[72px]"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          connector.id === 'metaMaskSDK' ? 'bg-[#f6851b]/10' :
-                          connector.id === 'coinbaseWalletSDK' ? 'bg-[#0052ff]/10' :
-                          connector.id === 'walletConnect' ? 'bg-[#3b99fc]/10' :
-                          'bg-white/10'
-                        }`}>
-                          {connector.id === 'metaMaskSDK' ? (
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" alt="MetaMask" className="w-6 h-6" />
-                          ) : connector.id === 'coinbaseWalletSDK' ? (
-                            <div className="w-6 h-6 bg-[#0052ff] rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">C</span>
-                            </div>
-                          ) : connector.id === 'walletConnect' ? (
-                            <QrCode className="w-5 h-5 text-[#3b99fc]" />
-                          ) : (
-                            <Wallet className="w-5 h-5 text-slate-400" />
-                          )}
-                        </div>
-                        <div className="text-left">
-                          <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                            {connector.id === 'injected' ? 'Browser Wallet' : connector.name}
-                          </div>
-                          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                            {connector.id === 'injected'
-                              ? 'MetaMask, Rabby, etc.'
-                              : connector.id === 'walletConnect'
-                              ? 'Scan with mobile wallet'
-                              : connector.id === 'metaMaskSDK'
-                              ? 'Connect with MetaMask'
-                              : connector.id === 'coinbaseWalletSDK'
-                              ? 'Connect with Coinbase'
-                              : ''}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))
-                )}
-
-                {isPending && (
-                  <div className="text-center py-2">
-                    <span
-                      className="text-slate-400"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-                    >
-                      Connecting...
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
