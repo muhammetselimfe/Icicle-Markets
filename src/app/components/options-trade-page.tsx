@@ -786,12 +786,12 @@ export function OptionsTradePage() {
   const navigate = useNavigate();
   const { address, isConnected } = useAccount();
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     if (authenticated) {
       await logout();
     }
     login();
-  };
+  }, [authenticated, logout, login]);
   const chainId = useChainId();
   const { switchForTab, isSwitching } = useChainSwitch();
   const { step, txHash, error: execError, openPosition, reset } = useOptionsTrading();
@@ -976,7 +976,7 @@ export function OptionsTradePage() {
       quantity: qtyMicro,
       maxCost,
     });
-  }, [isConnected, isWrongChain, market, lowerTick, upperTick, maxCost, resolvedQty, switchForTab, openPosition]);
+  }, [isConnected, isWrongChain, market, lowerTick, upperTick, maxCost, resolvedQty, switchForTab, openPosition, handleLogin]);
 
   const getButtonText = () => {
     if (!isConnected) return 'Sign In';
