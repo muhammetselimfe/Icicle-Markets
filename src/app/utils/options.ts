@@ -18,18 +18,17 @@ export function parseUsdc(input: string): bigint {
   return BigInt(Math.round(num * 1e6));
 }
 
-export function getMarketStateLabel(state: number): string {
+export function getMarketStateLabel(state: number, settled?: boolean): string {
   switch (state) {
     case MarketState.Trading:
-      return 'Trading';
+      return 'Live';
     case MarketState.SettlementOpen:
-      return 'Settlement';
+      return 'Awaiting Settlement';
     case MarketState.PendingOps:
-      return 'Pending';
+      return 'Processing';
     case MarketState.FinalizedPrimary:
-      return 'Finalized';
     case MarketState.FinalizedSecondary:
-      return 'Finalized';
+      return settled ? 'Settled' : 'Expired';
     case MarketState.FailedPendingManual:
       return 'Failed';
     default:

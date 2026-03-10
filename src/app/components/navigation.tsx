@@ -1,4 +1,4 @@
-import { BarChart3, Network, Target } from 'lucide-react';
+import { BarChart3, Target, Wallet } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 
 interface NavigationProps {
@@ -10,7 +10,7 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   const navItems = [
     { id: 'markets', label: 'Markets', icon: BarChart3 },
     { id: 'options', label: 'Options', icon: Target },
-    { id: 'explorer', label: 'Explorer', icon: Network },
+    { id: 'positions', label: 'Positions', icon: Wallet },
   ];
 
   return (

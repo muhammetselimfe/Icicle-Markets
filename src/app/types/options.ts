@@ -11,6 +11,7 @@ export interface MarketDisplay {
   marketId: number;
   state: MarketState;
   stateLabel: string;
+  settled: boolean;
   isSeeded: boolean;
   minTick: bigint;
   maxTick: bigint;
@@ -37,6 +38,10 @@ export interface MarketDisplay {
   accentColor: string;
   /** Price formatting decimals */
   priceDecimals: number;
+  /** Settlement tick (only set when settled=true) */
+  settlementTick: bigint | null;
+  /** Settlement price in human-readable dollars */
+  settlementPrice: number | null;
 }
 
 export interface PositionDisplay {

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { usePrivy, useLogin } from '@privy-io/react-auth';
-import { Search, ChevronDown, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound } from 'lucide-react';
+import { Search, ChevronDown, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound, Network } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -195,6 +195,13 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/explorer')}
+              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center"
+              title="Explorer"
+            >
+              <Network className="w-5 h-5 text-slate-400" />
+            </button>
             {isConnected ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -341,6 +348,23 @@ export function Header() {
                     </span>
                   </button>
 
+                  {/* Explorer */}
+                  <button
+                    onClick={() => {
+                      navigate('/explorer');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                  >
+                    <Network className="w-4 h-4 text-slate-400" />
+                    <span
+                      className="text-slate-300"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Explorer
+                    </span>
+                  </button>
+
                   {/* Sign Out */}
                   <button
                     onClick={async () => {
@@ -359,20 +383,37 @@ export function Header() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => {
-                    handleLogin();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full bg-white/10 px-5 py-3 hover:bg-white/15 transition-all rounded-lg flex items-center justify-center gap-2"
-                >
-                  <span
-                    className="text-white font-medium"
-                    style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      handleLogin();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full bg-white/10 px-5 py-3 hover:bg-white/15 transition-all rounded-lg flex items-center justify-center gap-2"
                   >
-                    Sign In
-                  </span>
-                </button>
+                    <span
+                      className="text-white font-medium"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Sign In
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/explorer');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                  >
+                    <Network className="w-4 h-4 text-slate-400" />
+                    <span
+                      className="text-slate-300"
+                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                    >
+                      Explorer
+                    </span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

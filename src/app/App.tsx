@@ -6,6 +6,7 @@ import { MarketsView } from '@/app/components/markets-view';
 import { PortfolioView } from '@/app/components/portfolio-view';
 import { ExplorerView } from '@/app/components/explorer-view';
 import { OptionsView } from '@/app/components/options-view';
+import { PositionsView } from '@/app/components/positions-view';
 import { OptionsTradePage } from '@/app/components/options-trade-page';
 import { BlockPage, TransactionPage, AddressPage } from '@/app/pages';
 import { Toaster } from '@/app/components/ui/sonner';
@@ -18,6 +19,7 @@ function AppContent() {
   const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/portfolio') return 'portfolio';
+    if (path === '/positions') return 'positions';
     if (path === '/options' || path.startsWith('/options/')) return 'options';
     if (path === '/explorer' || path.startsWith('/block') || path.startsWith('/tx') || path.startsWith('/address')) return 'explorer';
     return 'markets';
@@ -35,6 +37,9 @@ function AppContent() {
         break;
       case 'options':
         navigate('/options');
+        break;
+      case 'positions':
+        navigate('/positions');
         break;
       case 'explorer':
         navigate('/explorer');
@@ -94,6 +99,7 @@ function AppContent() {
           <Route path="/portfolio" element={<PortfolioView />} />
           <Route path="/options" element={<OptionsView />} />
           <Route path="/options/trade/:marketId" element={<OptionsTradePage />} />
+          <Route path="/positions" element={<PositionsView />} />
           <Route path="/explorer" element={<ExplorerView />} />
           <Route path="/block/:blockNumber" element={<BlockPage />} />
           <Route path="/tx/:hash" element={<TransactionPage />} />

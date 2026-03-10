@@ -10,6 +10,7 @@ import { detectAsset } from '@/app/config/asset-registry';
 // Market struct field indices (24-field struct)
 const F = {
   isSeeded: 0,
+  settled: 1,
   numBins: 4,
   startTimestamp: 8,
   endTimestamp: 9,
@@ -17,6 +18,8 @@ const F = {
   minTick: 12,
   maxTick: 13,
   tickSpacing: 14,
+  settlementTick: 15,
+  settlementValue: 16,
 } as const;
 
 export function useOptionsMarkets() {
@@ -58,6 +61,7 @@ export function useOptionsMarkets() {
 
           const m = marketData as readonly unknown[];
           const isSeeded = m[F.isSeeded] as boolean;
+          const settled = m[F.settled] as boolean;
           const numBins = Number(m[F.numBins]);
           const startTimestamp = Number(m[F.startTimestamp]);
           const endTimestamp = Number(m[F.endTimestamp]);
@@ -65,6 +69,8 @@ export function useOptionsMarkets() {
           const minTick = m[F.minTick] as bigint;
           const maxTick = m[F.maxTick] as bigint;
           const tickSpacing = m[F.tickSpacing] as bigint;
+          const settlementTick = m[F.settlementTick] as bigint;
+          const settlementValue = m[F.settlementValue] as bigint;
 
           const state = Number(stateRaw);
 
@@ -74,7 +80,8 @@ export function useOptionsMarkets() {
           results.push({
             marketId: id,
             state,
-            stateLabel: getMarketStateLabel(state),
+            stateLabel: getMarketStateLabel(state, settled),
+            settled,
             isSeeded,
             minTick,
             maxTick,
@@ -93,6 +100,8 @@ export function useOptionsMarkets() {
             assetLogo: asset.logo,
             accentColor: asset.accentColor,
             priceDecimals: asset.priceDecimals,
+            settlementTick: settled ? settlementTick : null,
+            settlementPrice: settled ? Number(settlementValue) / 1e6 : null,
           });
         } catch (err) {
           console.error(`Failed to fetch market ${id}:`, err);

@@ -225,6 +225,7 @@ function PriceDistributionChart({
 
   const [dragging, setDragging] = useState<'min' | 'max' | null>(null);
   const [hoverBin, setHoverBin] = useState<number | null>(null);
+  const [hoverChartIdx, setHoverChartIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -306,6 +307,16 @@ function PriceDistributionChart({
     [svgW, svgH],
   );
 
+  // Time → X scale (needed early for hover logic)
+  const hasData = chartData.length > 0;
+  const tMin = hasData ? chartData[0].time : Date.now() - 86400000;
+  const tMax = hasData ? chartData[chartData.length - 1].time : Date.now();
+  const tRange = tMax - tMin || 1;
+  const toX = useCallback(
+    (t: number) => padL + ((t - tMin) / tRange) * plotW,
+    [padL, tMin, tRange, plotW],
+  );
+
   // Drag handlers
   const handlePointerDown = useCallback(
     (handle: 'min' | 'max') => (e: React.PointerEvent) => {
@@ -330,17 +341,32 @@ function PriceDistributionChart({
           const newMin = Math.min(snapped, selectedMax - tickSpacing);
           if (newMin !== selectedMin) onRangeChange(newMin, selectedMax);
         }
+        setHoverChartIdx(null);
       } else {
         // Find hovered bin
         const price = fromY(svgPt.y);
         const idx = bins.findIndex((b) => price >= b.price && price < b.price + tickSpacing);
         setHoverBin(idx >= 0 && svgPt.x >= padL ? idx : null);
+
+        // Find nearest chart data point by X position
+        if (chartData.length > 0 && svgPt.x >= padL && svgPt.x <= padL + plotW) {
+          let closest = 0;
+          let closestDist = Infinity;
+          for (let i = 0; i < chartData.length; i++) {
+            const cx = toX(chartData[i].time);
+            const dist = Math.abs(cx - svgPt.x);
+            if (dist < closestDist) { closestDist = dist; closest = i; }
+          }
+          setHoverChartIdx(closestDist < 40 ? closest : null);
+        } else {
+          setHoverChartIdx(null);
+        }
       }
     },
-    [dragging, clientToSvg, fromY, snapToTick, selectedMin, selectedMax, tickSpacing, onRangeChange, bins, padL],
+    [dragging, clientToSvg, fromY, snapToTick, selectedMin, selectedMax, tickSpacing, onRangeChange, bins, padL, chartData, plotW, toX],
   );
 
-  const handlePointerLeave = useCallback(() => { setDragging(null); setHoverBin(null); }, []);
+  const handlePointerLeave = useCallback(() => { setDragging(null); setHoverBin(null); setHoverChartIdx(null); }, []);
   const handlePointerUp = useCallback(() => { setDragging(null); }, []);
 
   // Probability scaling — use relative scaling so small differences are visible
@@ -382,16 +408,6 @@ function PriceDistributionChart({
 
   const clipId = `${uid}-clip`;
   const gradId = `${uid}-priceFill`;
-
-  // Time → X scale for price line overlay
-  const hasData = chartData.length > 0;
-  const tMin = hasData ? chartData[0].time : Date.now() - 86400000;
-  const tMax = hasData ? chartData[chartData.length - 1].time : Date.now();
-  const tRange = tMax - tMin || 1;
-  const toX = useCallback(
-    (t: number) => padL + ((t - tMin) / tRange) * plotW,
-    [padL, tMin, tRange, plotW],
-  );
 
   // Price history SVG path
   const pricePath = useMemo(() => {
@@ -590,8 +606,60 @@ function PriceDistributionChart({
           </text>
         ))}
 
-        {/* Hover tooltip */}
-        {!dragging && hoveredBin && (() => {
+        {/* Price line hover crosshair + tooltip */}
+        {!dragging && hoverChartIdx !== null && chartData[hoverChartIdx] && (() => {
+          const d = chartData[hoverChartIdx];
+          const hx = toX(d.time);
+          const hy = toY(d.price);
+          const dt = new Date(d.time);
+          const dateStr = dt.toLocaleDateString([], { month: '2-digit', day: '2-digit', year: 'numeric' });
+          const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+          // Find which bin this price falls into
+          const binIdx = bins.findIndex((b) => d.price >= b.price && d.price < b.price + tickSpacing);
+          const binProb = binIdx >= 0 ? (bins[binIdx].probability * 100) : null;
+
+          const tipW = 170, tipH = binProb !== null ? 72 : 54;
+          let tx = hx + 12;
+          if (tx + tipW > padL + plotW) tx = hx - tipW - 12;
+          let ty = hy - tipH / 2;
+          if (ty < padT) ty = padT;
+          if (ty + tipH > padT + plotH) ty = padT + plotH - tipH;
+
+          return (
+            <g>
+              {/* Vertical crosshair */}
+              <line x1={hx} y1={padT} x2={hx} y2={padT + plotH} stroke="#64748b" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.6} />
+              {/* Horizontal crosshair */}
+              <line x1={padL} y1={hy} x2={padL + plotW} y2={hy} stroke="#64748b" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.6} />
+              {/* Dot on the price line */}
+              <circle cx={hx} cy={hy} r={4} fill="#ff6b6b" stroke="#0a0e27" strokeWidth={2} />
+              {/* Tooltip card */}
+              <rect x={tx} y={ty} width={tipW} height={tipH} rx={6} fill="#1e293b" stroke="#334155" strokeWidth={0.5} opacity={0.95} />
+              {/* Date + Time header */}
+              <text x={tx + 10} y={ty + 16} fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">{dateStr}</text>
+              <text x={tx + tipW - 10} y={ty + 16} textAnchor="end" fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">{timeStr}</text>
+              {/* Price row */}
+              <circle cx={tx + 14} cy={ty + 34} r={3.5} fill="#4dff88" />
+              <text x={tx + 22} y={ty + 37} fill="#94a3b8" fontSize={11} fontFamily="Inter, sans-serif">Price:</text>
+              <text x={tx + tipW - 10} y={ty + 37} textAnchor="end" fill="#e2e8f0" fontSize={12} fontWeight={600} fontFamily="Inter, sans-serif">
+                {fmtPrice(d.price)}
+              </text>
+              {/* Probability row */}
+              {binProb !== null && (
+                <>
+                  <circle cx={tx + 14} cy={ty + 54} r={3.5} fill="#818cf8" />
+                  <text x={tx + 22} y={ty + 57} fill="#94a3b8" fontSize={11} fontFamily="Inter, sans-serif">Prob:</text>
+                  <text x={tx + tipW - 10} y={ty + 57} textAnchor="end" fill="#e2e8f0" fontSize={12} fontWeight={600} fontFamily="Inter, sans-serif">
+                    {binProb.toFixed(2)}%
+                  </text>
+                </>
+              )}
+            </g>
+          );
+        })()}
+
+        {/* Bin hover tooltip (hidden when price line tooltip is active) */}
+        {!dragging && hoverChartIdx === null && hoveredBin && (() => {
           const by = toY(hoveredBin.price + tickSpacing / 2);
           const pct = (hoveredBin.probability * 100);
           const tipW = 100, tipH = 32;
@@ -609,7 +677,7 @@ function PriceDistributionChart({
                 {fmtPrice(hoveredBin.price)} – {fmtPrice(hoveredBin.price + tickSpacing)}
               </text>
               <text x={tx + tipW / 2} y={ty + 25} textAnchor="middle" fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">
-                {pct < 1 ? pct.toFixed(2) : pct.toFixed(1)}% probability
+                {pct.toFixed(2)}% probability
               </text>
             </g>
           );
@@ -700,78 +768,94 @@ function PositionCard({ position: p, tickDivisor = 1 }: { position: PositionDisp
   const valueUsd = Number(effectiveValue) / 1e6;
 
   return (
-    <div className="bg-[#111631] border border-white/[0.08] rounded-xl p-3.5 hover:border-[#8be4ff]/20 transition-colors relative overflow-hidden">
-      {/* Subtle PNL accent bar at top */}
+    <div className="bg-[#111631] border border-white/[0.08] rounded-xl hover:border-[#8be4ff]/20 transition-colors relative overflow-hidden">
+      {/* PNL accent bar at top */}
       {pnlColor && (
-        <div className="absolute top-0 left-0 right-0 h-[2px]" style={{ backgroundColor: pnlColor, opacity: 0.5 }} />
+        <div className="h-[2px]" style={{ backgroundColor: pnlColor, opacity: 0.5 }} />
       )}
 
-      {/* Row 1: Range + PNL % badge */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[#8be4ff] tabular-nums" style={{ ...FONT, fontSize: '13px', fontWeight: 600 }}>
-          {formatTickAsPrice(p.lowerTick, tickDivisor)} – {formatTickAsPrice(p.upperTick, tickDivisor)}
-        </span>
-        {pnlPct !== null ? (
-          <span
-            className="tabular-nums px-1.5 py-0.5 rounded"
-            style={{
-              ...FONT,
-              fontSize: '11px',
-              fontWeight: 600,
-              color: pnlColor,
-              backgroundColor: pnl! >= 0 ? 'rgba(77,255,136,0.1)' : 'rgba(255,77,77,0.1)',
-            }}
-          >
-            {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(0)}%
+      <div className="p-3.5">
+        {/* Row 1: Range + Position ID */}
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[#8be4ff] tabular-nums" style={{ ...FONT, fontSize: '13px', fontWeight: 600 }}>
+            {formatTickAsPrice(p.lowerTick, tickDivisor)} – {formatTickAsPrice(p.upperTick, tickDivisor)}
           </span>
-        ) : (
           <span className="text-slate-600 tabular-nums" style={{ ...FONT, fontSize: '11px' }}>
             #{p.positionId}
           </span>
-        )}
-      </div>
+        </div>
 
-      {/* Row 2: Big value + PNL dollar amount */}
-      <div className="flex items-baseline justify-between mb-2.5">
-        <span className="text-white tabular-nums font-semibold" style={{ ...FONT, fontSize: '18px' }}>
-          {formatUsdc(effectiveValue)}
-        </span>
+        {/* Row 2: Value + Cost in two columns */}
+        <div className="flex items-baseline justify-between mb-3">
+          <div>
+            <div className="text-slate-500" style={{ ...FONT, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Value</div>
+            <span className="text-white tabular-nums font-semibold" style={{ ...FONT, fontSize: '18px' }}>
+              {formatUsdc(effectiveValue)}
+            </span>
+          </div>
+          <div className="text-right">
+            <div className="text-slate-500" style={{ ...FONT, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Cost</div>
+            <span className="text-slate-400 tabular-nums" style={{ ...FONT, fontSize: '14px' }}>
+              {hasCostBasis ? formatUsdc(p.costBasis) : '—'}
+            </span>
+          </div>
+        </div>
+
+        {/* Row 3: P&L highlight strip */}
         {pnl !== null && (
-          <span className="tabular-nums" style={{ ...FONT, fontSize: '12px', color: pnlColor }}>
-            {pnl >= 0 ? '+' : ''}{Math.abs(pnl) < 0.01 ? pnl.toFixed(4) : `$${pnl.toFixed(2)}`}
-          </span>
-        )}
-      </div>
-
-      {/* Row 3: Cost basis (subtle) + Action */}
-      <div className="flex items-center justify-between">
-        <span className="text-slate-500 tabular-nums" style={{ ...FONT, fontSize: '11px' }}>
-          {hasCostBasis ? `Cost ${formatUsdc(p.costBasis)}` : `#${p.positionId}`}
-        </span>
-        {(canClose || canClaim) && (
-          <button
-            onClick={handleAction}
-            disabled={isActionDisabled}
-            className={cn(
-              'px-3 py-1 rounded-md font-medium transition-colors flex items-center gap-1.5',
-              isActionDisabled
-                ? 'bg-white/5 text-slate-600 cursor-not-allowed'
-                : canClaim
-                  ? 'bg-[#8be4ff]/10 text-[#8be4ff] hover:bg-[#8be4ff]/20'
-                  : 'bg-white/[0.06] text-slate-400 hover:bg-white/[0.12] hover:text-white',
-            )}
-            style={{ ...FONT, fontSize: '12px' }}
+          <div
+            className="flex items-center justify-between px-3 py-2 rounded-lg mb-3"
+            style={{ backgroundColor: pnl >= 0 ? 'rgba(77,255,136,0.06)' : 'rgba(255,77,77,0.06)' }}
           >
-            {isBusy && <span className="w-2.5 h-2.5 border-[1.5px] border-current border-t-transparent rounded-full animate-spin" />}
-            {getActionLabel()}
-          </button>
+            <span className="text-slate-400" style={{ ...FONT, fontSize: '11px' }}>P&L</span>
+            <div className="flex items-center gap-2">
+              <span className="tabular-nums font-medium" style={{ ...FONT, fontSize: '13px', color: pnlColor }}>
+                {pnl >= 0 ? '+' : ''}${Math.abs(pnl) < 0.01 ? pnl.toFixed(4) : pnl.toFixed(2)}
+              </span>
+              {pnlPct !== null && (
+                <span
+                  className="tabular-nums px-1.5 py-0.5 rounded font-semibold"
+                  style={{
+                    ...FONT,
+                    fontSize: '11px',
+                    color: pnlColor,
+                    backgroundColor: pnl >= 0 ? 'rgba(77,255,136,0.12)' : 'rgba(255,77,77,0.12)',
+                  }}
+                >
+                  {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
         )}
-        {isLoser && (
-          <span className="px-3 py-1 rounded-md bg-red-500/10 text-red-400 font-medium" style={{ ...FONT, fontSize: '12px' }}>Lost</span>
-        )}
-        {p.claimed && (
-          <span className="text-slate-600" style={{ ...FONT, fontSize: '12px' }}>Claimed</span>
-        )}
+
+        {/* Row 4: Action */}
+        <div className="flex items-center justify-end">
+          {(canClose || canClaim) && (
+            <button
+              onClick={handleAction}
+              disabled={isActionDisabled}
+              className={cn(
+                'px-3.5 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5',
+                isActionDisabled
+                  ? 'bg-white/5 text-slate-600 cursor-not-allowed'
+                  : canClaim
+                    ? 'bg-[#8be4ff]/10 text-[#8be4ff] hover:bg-[#8be4ff]/20'
+                    : 'bg-white/[0.06] text-slate-400 hover:bg-white/[0.12] hover:text-white',
+              )}
+              style={{ ...FONT, fontSize: '12px' }}
+            >
+              {isBusy && <span className="w-2.5 h-2.5 border-[1.5px] border-current border-t-transparent rounded-full animate-spin" />}
+              {getActionLabel()}
+            </button>
+          )}
+          {isLoser && (
+            <span className="px-3.5 py-1.5 rounded-lg bg-red-500/10 text-red-400 font-medium" style={{ ...FONT, fontSize: '12px' }}>Lost</span>
+          )}
+          {p.claimed && (
+            <span className="text-slate-600" style={{ ...FONT, fontSize: '12px' }}>Claimed</span>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1132,21 +1216,32 @@ export function OptionsTradePage() {
           <div className="grid grid-cols-3 divide-x divide-white/10 border-b border-white/10">
             <div className="p-4 md:p-5">
               <div className="text-slate-500 mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Current Price
-                <InfoTip text={`Live ${market.assetSymbol} price from Redstone oracle. This is the reference price — if it lands in your range at settlement, you win.`} />
+                {market.settled ? 'Settlement Price' : 'Current Price'}
+                <InfoTip text={market.settled
+                  ? 'The oracle-reported price at settlement. The bin containing this price wins.'
+                  : `Live ${market.assetSymbol} price from Redstone oracle. This is the reference price — if it lands in your range at settlement, you win.`
+                } />
               </div>
-              <div className="text-red-500 font-semibold flex items-center gap-2" style={{ ...FONT, fontSize: '20px' }}>
-                {market.priceDecimals === 0 ? `$${Math.round(currentPrice).toLocaleString()}` : `$${currentPrice.toFixed(2)}`}
-                {lastHourData.length > 1 && <MiniSparkline data={lastHourData} />}
+              <div className={cn('font-semibold flex items-center gap-2', market.settled ? 'text-white' : 'text-red-500')} style={{ ...FONT, fontSize: '20px' }}>
+                {market.settled && market.settlementPrice !== null
+                  ? (market.priceDecimals === 0 ? `$${Math.round(market.settlementPrice).toLocaleString()}` : `$${market.settlementPrice.toFixed(2)}`)
+                  : (market.priceDecimals === 0 ? `$${Math.round(currentPrice).toLocaleString()}` : `$${currentPrice.toFixed(2)}`)
+                }
+                {!market.settled && lastHourData.length > 1 && <MiniSparkline data={lastHourData} />}
               </div>
             </div>
             <div className="p-4 md:p-5">
               <div className="text-slate-500 mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Most Likely
-                <InfoTip text="The price bin with the highest probability based on current market trading activity. Updates as traders buy and sell." />
+                {market.settled ? 'Winning Bin' : 'Most Likely'}
+                <InfoTip text={market.settled
+                  ? 'The price bin that contained the settlement price. Positions covering this bin receive payouts.'
+                  : 'The price bin with the highest probability based on current market trading activity. Updates as traders buy and sell.'
+                } />
               </div>
-              <div className="text-green-400 font-semibold" style={{ ...FONT, fontSize: '20px' }}>
-                {binsLoading ? (
+              <div className={cn('font-semibold', market.settled ? 'text-green-400' : 'text-green-400')} style={{ ...FONT, fontSize: '20px' }}>
+                {market.settled && market.settlementTick !== null ? (
+                  formatTickAsPrice(market.settlementTick, market.tickDivisor)
+                ) : binsLoading ? (
                   <span className="text-slate-600">...</span>
                 ) : mostLikelyPrice === null ? (
                   <span className="text-slate-500">&mdash;</span>
@@ -1157,13 +1252,16 @@ export function OptionsTradePage() {
             </div>
             <div className="p-4 md:p-5">
               <div className="text-slate-500 mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {expired ? 'Ended' : 'Ends In'}
-                <InfoTip text="Time remaining until trading closes. After this, the oracle reports the settlement price and winning positions can claim payouts." />
+                {market.settled ? 'Status' : expired ? 'Ended' : 'Ends In'}
+                <InfoTip text={market.settled
+                  ? 'This market has been settled. Winners can claim their payouts.'
+                  : 'Time remaining until trading closes. After this, the oracle reports the settlement price and winning positions can claim payouts.'
+                } />
               </div>
-              <div className="text-white font-semibold font-mono" style={{ fontSize: '20px' }}>
-                {expired ? 'Closed' : countdown}
+              <div className={cn('font-semibold', market.settled ? 'text-green-400' : 'text-white')} style={{ fontSize: '20px', fontFamily: market.settled ? 'Inter, sans-serif' : undefined }}>
+                {market.settled ? 'Settled' : expired ? 'Closed' : <span className="font-mono">{countdown}</span>}
               </div>
-              {!expired && market && (() => {
+              {!expired && !market.settled && (() => {
                 const now = Date.now() / 1000;
                 const total = market.tradingEnd - market.tradingStart;
                 const pct = total <= 0 ? 100 : Math.max(0, Math.min(100, ((now - market.tradingStart) / total) * 100));

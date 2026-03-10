@@ -98,7 +98,11 @@ function OptionsMarketCard({ market: m, onClick }: { market: import('@/app/types
               <div className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px' }}>
                 {fmtPrice}
               </div>
-              <div className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px' }}>
+              <div className="flex items-center justify-end gap-1.5 text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '11px' }}>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                </span>
                 Live
               </div>
             </div>
@@ -210,14 +214,14 @@ export function MarketsView() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
-      {/* Trending Options Markets */}
+      {/* Prediction Markets Section */}
       {activeOptions.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-400" />
               <span className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
-                Trending Options
+                Prediction Markets
               </span>
             </div>
             <button
@@ -229,6 +233,9 @@ export function MarketsView() {
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
+          <p className="text-slate-500 mb-4" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+            Bet on where asset prices will land. Pick a range, trade options, win if you're right.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {activeOptions.map(m => (
               <OptionsMarketCard
@@ -243,13 +250,16 @@ export function MarketsView() {
 
       {/* Loading skeleton for options */}
       {optionsLoading && (
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="mb-10">
+          <div className="flex items-center gap-2 mb-1">
             <Flame className="w-4 h-4 text-orange-400" />
             <span className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
-              Trending Options
+              Prediction Markets
             </span>
           </div>
+          <p className="text-slate-500 mb-4" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+            Bet on where asset prices will land. Pick a range, trade options, win if you're right.
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 space-y-4">
@@ -269,8 +279,21 @@ export function MarketsView() {
         </div>
       )}
 
+      {/* Spot Trading Section */}
+      <div className="mb-1">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-[#8be4ff]" />
+          <span className="text-white font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+            Spot Trading
+          </span>
+        </div>
+        <p className="text-slate-500 mt-1" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+          Swap Avalanche tokens instantly. Browse prices, charts, and trade directly.
+        </p>
+      </div>
+
       {/* Pill-style Tabs */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 mt-4">
         <div className="flex gap-1 p-1 bg-white/5 rounded-xl overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon;
@@ -384,7 +407,7 @@ export function MarketsView() {
                       className="px-4 py-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 rounded-lg font-medium transition-colors min-h-[44px]"
                       style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                     >
-                      Trade
+                      Swap
                     </button>
                   )}
                 </div>
