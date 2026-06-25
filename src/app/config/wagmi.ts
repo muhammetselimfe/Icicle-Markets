@@ -17,11 +17,12 @@ export const CHAIN_IDS = {
 } as const;
 
 // Icicle Options contract addresses (Avalanche Fuji)
+// v2 dynamic-pricing deployment (Fuji), 15-min batches. Redeployed 2026-06-23.
 export const OPTIONS_CONTRACTS = {
-  core: '0x5163b4aB77650D1D937a5c5E6B0d012e4659546e' as const,
-  position: '0x3FD90718b2aA7D15417d1d494b653c7EF44dff70' as const,
-  lpShare: '0xf8Ea96283fA5726fb64f3C57695a333Ce007B56a' as const,
-  usdc: '0x12ecFc9715cEA5DAd986F5B59848aEc7044e66E8' as const,
+  core: '0x516F1301b7546220a5c575d21B8D34A35210E646' as const,
+  position: '0x795b7E5Adddd23FDD97B71980fe8C667F6Ee76Ce' as const,
+  lpShare: '0xcde46B5A9dc0233097Dd1Fb296086d42928656d1' as const,
+  usdc: '0x199F29b8ef9ff78978325045373aB9eFCf3FE871' as const,
 } as const;
 
 // Native token addresses
