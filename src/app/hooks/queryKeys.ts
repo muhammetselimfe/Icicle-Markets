@@ -9,6 +9,11 @@ export const queryKeys = {
   avaxPrice: () => ['avaxPrice'] as const,
   assetChart: (coingeckoId: string, days: number) => ['assetChart', coingeckoId, days] as const,
   marketTokens: () => ['marketTokens'] as const,
+  tokenDetail: (id: string) => ['tokenDetail', id] as const,
+  tokenChart: (id: string, days: number) => ['tokenChart', id, days] as const,
+  tokenInfo: (id: string) => ['tokenInfo', id] as const,
+  tokenPools: (address: string) => ['tokenPools', address] as const,
+  tokenVariants: (ids: string) => ['tokenVariants', ids] as const,
   transactions: (chainId: number, limit: number) =>
     ['transactions', chainId, limit] as const,
   transactionHistory: (address: string) =>

@@ -24,7 +24,6 @@ import { useTransactionHistory, type Transaction, type TransactionType } from '@
 import { SwapModal } from '@/app/components/swap-modal';
 import { cn } from '@/app/components/ui/utils';
 
-
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
@@ -107,24 +106,12 @@ function WalletAvatar({ address, size = 48 }: { address: string; size?: number }
 
   return (
     <div
-      className="relative overflow-hidden rounded-full"
-      style={{
-        width: size,
-        height: size,
-        background: '#1a1f36',
-      }}
+      className="relative overflow-hidden rounded-full ring-1 ring-ice-line/20"
+      style={{ width: size, height: size, background: '#141c3d' }}
     >
       <svg width={size} height={size} viewBox="0 0 100 100">
         {pattern.map((p, i) => (
-          <rect
-            key={i}
-            x={p.x}
-            y={p.y}
-            width={p.size}
-            height={p.size}
-            fill={p.color}
-            opacity={0.85}
-          />
+          <rect key={i} x={p.x} y={p.y} width={p.size} height={p.size} fill={p.color} opacity={0.85} />
         ))}
       </svg>
     </div>
@@ -149,9 +136,7 @@ function TokenLogo({ holding }: { holding: PortfolioHolding }) {
           }}
         />
       ) : null}
-      <span className={`text-lg text-white ${holding.logoUrl ? 'hidden' : ''}`}>
-        {holding.symbol.charAt(0)}
-      </span>
+      <span className={`text-lg text-ice-text ${holding.logoUrl ? 'hidden' : ''}`}>{holding.symbol.charAt(0)}</span>
     </div>
   );
 }
@@ -171,11 +156,11 @@ function TransactionIcon({ type }: { type: TransactionType }) {
     contract: <FileCode className="w-5 h-5" />,
   };
 
-  return <span className="text-slate-400">{icons[type] || <ArrowRightLeft className="w-5 h-5" />}</span>;
+  return <span className="text-ice-muted">{icons[type] || <ArrowRightLeft className="w-5 h-5" />}</span>;
 }
 
 // ============================================================
-// LOADING STATE
+// STATE COMPONENTS
 // ============================================================
 
 function LoadingState() {
@@ -183,13 +168,13 @@ function LoadingState() {
     <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
       <div className="max-w-3xl mx-auto">
         <div className="p-16 text-center">
-          <div className="w-16 h-16 mx-auto mb-6 bg-white/5 rounded-full flex items-center justify-center">
-            <RefreshCw className="w-8 h-8 text-slate-400 animate-spin" />
+          <div className="w-16 h-16 mx-auto mb-6 bg-ice-surface border border-ice-line/15 rounded-full flex items-center justify-center">
+            <RefreshCw className="w-8 h-8 text-ice-accent animate-spin" />
           </div>
-          <h2 className="text-white text-lg font-medium mb-2" style={{ fontFamily: "Inter, sans-serif" }}>
+          <h2 className="text-ice-text text-lg font-medium mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Loading portfolio...
           </h2>
-          <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+          <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
             Fetching your wallet data
           </p>
         </div>
@@ -198,42 +183,35 @@ function LoadingState() {
   );
 }
 
-// ============================================================
-// ERROR STATE
-// ============================================================
-
 function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
-    <div className="p-10 text-center">
-      <AlertCircle className="w-10 h-10 text-red-500 mx-auto mb-4" />
-      <p className="text-red-500 mb-4" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+    <div className="p-10 text-center rounded-2xl bg-ice-surface border border-ice-line/15">
+      <AlertCircle className="w-10 h-10 text-ice-down mx-auto mb-4" />
+      <p className="text-ice-text mb-4" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
         {error}
       </p>
       <button
         onClick={onRetry}
-        className="px-5 py-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-all rounded-lg"
-        style={{ fontFamily: "Inter, sans-serif", fontSize: '14px', fontWeight: 500 }}
+        className="inline-flex items-center gap-2 px-5 py-2 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 transition-all rounded-lg"
+        style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', fontWeight: 500 }}
       >
+        <RefreshCw className="w-4 h-4" />
         Try again
       </button>
     </div>
   );
 }
 
-// ============================================================
-// EMPTY STATE
-// ============================================================
-
 function EmptyHoldingsState() {
   return (
-    <div className="p-12 text-center">
-      <div className="w-14 h-14 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
-        <Wallet className="w-7 h-7 text-slate-400" />
+    <div className="p-12 text-center rounded-2xl bg-ice-surface border border-ice-line/15">
+      <div className="w-14 h-14 mx-auto mb-4 bg-ice-accent/[0.08] border border-ice-line/15 rounded-full flex items-center justify-center">
+        <Wallet className="w-7 h-7 text-ice-accent" />
       </div>
-      <h3 className="text-white font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+      <h3 className="text-ice-text font-medium mb-2" style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px' }}>
         No tokens found
       </h3>
-      <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+      <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
         Your wallet doesn't hold any tracked tokens
       </p>
     </div>
@@ -242,14 +220,14 @@ function EmptyHoldingsState() {
 
 function EmptyTransactionsState() {
   return (
-    <div className="p-12 text-center">
-      <div className="w-14 h-14 mx-auto mb-4 bg-white/5 rounded-full flex items-center justify-center">
-        <ArrowRightLeft className="w-7 h-7 text-slate-400" />
+    <div className="p-12 text-center rounded-2xl bg-ice-surface border border-ice-line/15">
+      <div className="w-14 h-14 mx-auto mb-4 bg-ice-accent/[0.08] border border-ice-line/15 rounded-full flex items-center justify-center">
+        <ArrowRightLeft className="w-7 h-7 text-ice-accent" />
       </div>
-      <h3 className="text-white font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+      <h3 className="text-ice-text font-medium mb-2" style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px' }}>
         No transactions
       </h3>
-      <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+      <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
         No recent transactions found
       </p>
     </div>
@@ -257,7 +235,7 @@ function EmptyTransactionsState() {
 }
 
 // ============================================================
-// HOLDINGS TAB CONTENT - Simplified 5-column layout
+// HOLDINGS TAB CONTENT
 // ============================================================
 
 function HoldingsTab({
@@ -286,39 +264,39 @@ function HoldingsTab({
       {/* Mobile Card View */}
       <div className="md:hidden space-y-3">
         {holdings.map((holding) => (
-          <div key={holding.address} className="bg-white/[0.02] p-4 rounded-xl">
+          <div key={holding.address} className="bg-ice-surface border border-ice-line/15 p-4 rounded-xl">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <TokenLogo holding={holding} />
                 <div>
-                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
                     {holding.symbol}
                   </div>
-                  <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                  <div className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
                     {holding.name}
                   </div>
                 </div>
               </div>
-              <span className={cn(
-                "font-medium",
-                holding.change24h >= 0 ? 'text-green-500' : 'text-red-500'
-              )} style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <span
+                className={cn('font-mono font-medium', holding.change24h >= 0 ? 'text-ice-up' : 'text-ice-down')}
+                style={{ fontSize: '14px' }}
+              >
                 {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
               </span>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                <div className="text-ice-text font-mono font-medium" style={{ fontSize: '16px' }}>
                   ${formatNumber(holding.valueUsd)}
                 </div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <div className="text-ice-muted font-mono" style={{ fontSize: '13px' }}>
                   {formatBalance(holding.balance)} {holding.symbol}
                 </div>
               </div>
               <button
                 onClick={() => onTradeClick(holding)}
-                className="px-4 py-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all rounded-lg font-medium min-h-[44px]"
-                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                className="px-4 py-2.5 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 transition-all rounded-lg font-semibold min-h-[44px]"
+                style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
               >
                 Trade
               </button>
@@ -328,72 +306,74 @@ function HoldingsTab({
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/10">
-              <th className="text-left px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Asset</th>
-              <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Balance</th>
-              <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Value</th>
-              <th className="text-right px-4 py-4 text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>24h Change</th>
-              <th className="text-center px-4 py-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {holdings.map((holding) => (
-              <tr key={holding.address} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-3">
-                    <TokenLogo holding={holding} />
-                    <div>
-                      <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                        {holding.symbol}
-                      </div>
-                      <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                        {holding.name}
+      <div className="hidden md:block bg-ice-surface border border-ice-line/15 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-ice-surface2/40 border-b border-ice-line/15">
+                <th className="text-left px-4 py-3 font-mono uppercase text-ice-faint" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Asset</th>
+                <th className="text-right px-4 py-3 font-mono uppercase text-ice-faint" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Balance</th>
+                <th className="text-right px-4 py-3 font-mono uppercase text-ice-faint" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>Value</th>
+                <th className="text-right px-4 py-3 font-mono uppercase text-ice-faint" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>24h Change</th>
+                <th className="text-center px-4 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {holdings.map((holding) => (
+                <tr key={holding.address} className="border-b border-ice-line/[0.06] last:border-0 hover:bg-ice-line/[0.03] transition-colors">
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-3">
+                      <TokenLogo holding={holding} />
+                      <div>
+                        <div className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                          {holding.symbol}
+                        </div>
+                        <div className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                          {holding.name}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-right">
-                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                    {formatBalance(holding.balance)}
-                  </div>
-                  <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                    ${holding.priceUsd < 0.01 ? holding.priceUsd.toFixed(6) : formatNumber(holding.priceUsd)}
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-right text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                  ${formatNumber(holding.valueUsd)}
-                </td>
-                <td className="px-4 py-4 text-right">
-                  <span className={cn(
-                    "font-medium",
-                    holding.change24h >= 0 ? 'text-green-500' : 'text-red-500'
-                  )} style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-                    {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
-                  </span>
-                </td>
-                <td className="px-4 py-4 text-center">
-                  <button
-                    onClick={() => onTradeClick(holding)}
-                    className="px-4 py-2 bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all rounded-lg font-medium"
-                    style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
-                  >
-                    Trade
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <div className="text-ice-text font-mono" style={{ fontSize: '14px' }}>
+                      {formatBalance(holding.balance)}
+                    </div>
+                    <div className="text-ice-faint font-mono" style={{ fontSize: '12px' }}>
+                      ${holding.priceUsd < 0.01 ? holding.priceUsd.toFixed(6) : formatNumber(holding.priceUsd)}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-right text-ice-text font-mono" style={{ fontSize: '14px' }}>
+                    ${formatNumber(holding.valueUsd)}
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <span
+                      className={cn('font-mono', holding.change24h >= 0 ? 'text-ice-up' : 'text-ice-down')}
+                      style={{ fontSize: '14px' }}
+                    >
+                      {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    <button
+                      onClick={() => onTradeClick(holding)}
+                      className="px-4 py-2 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 transition-all rounded-lg font-semibold"
+                      style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}
+                    >
+                      Trade
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );
 }
 
 // ============================================================
-// TRANSACTIONS TAB CONTENT - Clean 2-line layout
+// TRANSACTIONS TAB CONTENT
 // ============================================================
 
 function TransactionsTab({
@@ -429,7 +409,7 @@ function TransactionsTab({
   };
 
   return (
-    <div className="space-y-1">
+    <div className="bg-ice-surface border border-ice-line/15 rounded-2xl p-2">
       {transactions.map((tx) => {
         const primaryTransfer = tx.transfers[0];
         const isOutgoing = primaryTransfer?.direction === 'out';
@@ -439,12 +419,12 @@ function TransactionsTab({
             key={tx.hash}
             to={`/tx/${tx.hash}`}
             className={cn(
-              "flex items-center gap-4 px-4 py-4 rounded-xl hover:bg-white/[0.03] transition-colors",
-              tx.status === 'failed' && "opacity-50"
+              'flex items-center gap-4 px-3 py-3.5 rounded-xl hover:bg-ice-line/[0.04] transition-colors',
+              tx.status === 'failed' && 'opacity-50',
             )}
           >
             {/* Icon */}
-            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-ice-line/[0.06] flex items-center justify-center flex-shrink-0">
               {tx.protocol?.logoUrl ? (
                 <img src={tx.protocol.logoUrl} alt={tx.protocol.name} className="w-6 h-6 rounded-full" />
               ) : (
@@ -455,19 +435,19 @@ function TransactionsTab({
             {/* Info - Left side */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                <span className="text-ice-text font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
                   {getTypeLabel(tx.type)}
                 </span>
                 {tx.protocol && (
-                  <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                  <span className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
                     on {tx.protocol.name}
                   </span>
                 )}
                 {tx.status === 'failed' && (
-                  <span className="text-red-500 text-xs font-medium px-1.5 py-0.5 bg-red-500/10 rounded">Failed</span>
+                  <span className="text-ice-down text-xs font-medium px-1.5 py-0.5 bg-ice-down/10 rounded">Failed</span>
                 )}
               </div>
-              <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <div className="text-ice-faint font-mono" style={{ fontSize: '12px' }}>
                 {formatRelativeTime(tx.timestamp)}
               </div>
             </div>
@@ -475,14 +455,14 @@ function TransactionsTab({
             {/* Amount - Right side */}
             {primaryTransfer && (
               <div className="text-right flex-shrink-0">
-                <div className={cn(
-                  "font-medium",
-                  isOutgoing ? 'text-red-500' : 'text-green-500'
-                )} style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                <div
+                  className={cn('font-mono font-medium', isOutgoing ? 'text-ice-down' : 'text-ice-up')}
+                  style={{ fontSize: '14px' }}
+                >
                   {isOutgoing ? '-' : '+'}{primaryTransfer.amount} {primaryTransfer.symbol}
                 </div>
                 {primaryTransfer.valueUsd > 0 && (
-                  <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                  <div className="text-ice-faint font-mono" style={{ fontSize: '12px' }}>
                     {isOutgoing ? '-' : ''}${formatNumber(primaryTransfer.valueUsd)}
                   </div>
                 )}
@@ -539,30 +519,34 @@ export function PortfolioView() {
   // Not connected state
   if (!authenticated) {
     return (
-      <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
-        <div className="max-w-md mx-auto">
-          <div className="p-10 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 bg-white/5 rounded-full flex items-center justify-center">
-              <Wallet className="w-8 h-8 text-slate-400" />
-            </div>
-            <h2 className="text-white text-xl font-semibold mb-3" style={{ fontFamily: "Inter, sans-serif" }}>
-              Sign in to get started
-            </h2>
-            <p className="text-slate-400 mb-8 leading-relaxed" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
-              Track and manage your Avalanche assets. Sign in to view your portfolio.
+      <div className="container mx-auto px-4 md:px-6 py-12 flex items-center justify-center min-h-[65vh]">
+        <div className="w-full max-w-md rounded-2xl bg-ice-surface border border-ice-line/15 p-10 text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
+            <Wallet className="w-8 h-8 text-ice-accent" />
+          </div>
+          <h2 className="text-ice-text text-xl font-bold mb-3" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Sign in to get started
+          </h2>
+          <p className="text-ice-muted mb-8 leading-relaxed" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+            Track and manage your Avalanche assets across spot and options — all in one portfolio.
+          </p>
+          <button
+            onClick={() => handleLogin()}
+            className="px-6 py-3 rounded-xl font-semibold transition-transform hover:-translate-y-px"
+            style={{
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '15px',
+              background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)',
+              color: '#06223a',
+              boxShadow: '0 2px 16px rgba(139,228,255,0.3)',
+            }}
+          >
+            Sign In
+          </button>
+          <div className="mt-8 pt-6 border-t border-ice-line/15">
+            <p className="text-ice-faint" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+              Sign in with email, Google, or your favorite wallet
             </p>
-            <button
-              onClick={() => handleLogin()}
-              className="bg-white text-black px-6 py-3 rounded-xl font-medium hover:bg-white/90 transition-colors"
-              style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
-            >
-              Sign In
-            </button>
-            <div className="mt-8 pt-6 border-t border-white/10">
-              <p className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
-                Sign in with email, Google, or your favorite wallet
-              </p>
-            </div>
           </div>
         </div>
       </div>
@@ -578,41 +562,41 @@ export function PortfolioView() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-4xl">
-      {/* Profile Header - Clean stacked layout */}
-      <div className="mb-6 md:mb-8">
+      {/* Profile Header */}
+      <div className="mb-6 md:mb-8 rounded-2xl bg-ice-surface border border-ice-line/15 p-5 md:p-6">
         {/* Identity Row */}
-        <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6">
+        <div className="flex items-center gap-3 md:gap-4 mb-5">
           {address && <WalletAvatar address={address} size={48} />}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+              <span className="text-ice-text font-mono font-medium" style={{ fontSize: '15px' }}>
                 {address ? truncateAddress(address) : ''}
               </span>
               <button
                 onClick={handleCopyAddress}
-                className="text-slate-400 hover:text-white transition-colors p-1"
+                className="text-ice-muted hover:text-ice-text transition-colors p-1"
                 title="Copy address"
               >
-                {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-4 h-4 text-ice-up" /> : <Copy className="w-4 h-4" />}
               </button>
               <a
                 href={`https://snowtrace.io/address/${address}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-slate-400 hover:text-white transition-colors p-1"
+                className="text-ice-muted hover:text-ice-text transition-colors p-1"
                 title="View on Snowtrace"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-ice-line/[0.06] border border-ice-line/15 text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#E84142]"></span>
                 Avalanche Mainnet
               </span>
             </div>
             {activeSince && (
-              <div className="flex items-center gap-1.5 text-slate-400">
+              <div className="flex items-center gap-1.5 text-ice-muted">
                 <Calendar className="w-3.5 h-3.5" />
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
                   Active since {formatDate(activeSince)}
                 </span>
               </div>
@@ -623,66 +607,53 @@ export function PortfolioView() {
         {/* Value Row */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
-            <div className="text-slate-400 mb-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="text-ice-faint font-mono uppercase mb-1.5" style={{ fontSize: '10px', letterSpacing: '1px' }}>
               Portfolio Value
             </div>
-            <div className="text-white" style={{ fontFamily: "Inter, sans-serif", fontSize: '28px', fontWeight: 600 }}>
+            <div className="text-ice-text font-mono" style={{ fontSize: '32px', fontWeight: 600, lineHeight: 1 }}>
               ${formatNumber(totalValue)}
             </div>
           </div>
-          <div className={cn(
-            "flex items-center gap-1.5",
-            totalChange24h >= 0 ? 'text-green-500' : 'text-red-500'
-          )}>
-            {totalChange24h >= 0 ? (
-              <TrendingUp className="w-4 h-4" />
-            ) : (
-              <TrendingDown className="w-4 h-4" />
-            )}
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px', fontWeight: 500 }}>
+          <div className={cn('flex items-center gap-1.5', totalChange24h >= 0 ? 'text-ice-up' : 'text-ice-down')}>
+            {totalChange24h >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            <span className="font-mono" style={{ fontSize: '14px', fontWeight: 500 }}>
               {totalChange24h >= 0 ? '+' : ''}{totalChange24h.toFixed(2)}% ({totalChange24h >= 0 ? '+' : '-'}{formatCompactNumber(Math.abs(totalChangeValue))})
             </span>
           </div>
         </div>
       </div>
 
-      {/* Tabs - Pill/segment style */}
+      {/* Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl overflow-x-auto scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('holdings')}
-            className={cn(
-              "px-3 md:px-4 py-2 rounded-lg transition-all font-medium whitespace-nowrap min-h-[44px]",
-              activeTab === 'holdings'
-                ? "bg-white/10 text-white"
-                : "text-slate-400 hover:text-white"
-            )}
-            style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-          >
-            Holdings ({holdings.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('transactions')}
-            className={cn(
-              "px-3 md:px-4 py-2 rounded-lg transition-all font-medium whitespace-nowrap min-h-[44px]",
-              activeTab === 'transactions'
-                ? "bg-white/10 text-white"
-                : "text-slate-400 hover:text-white"
-            )}
-            style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
-          >
-            Transactions ({txCount !== null ? txCount.toLocaleString() : transactions.length})
-          </button>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+          {([
+            ['holdings', `Holdings (${holdings.length})`],
+            ['transactions', `Transactions (${txCount !== null ? txCount.toLocaleString() : transactions.length})`],
+          ] as const).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={cn(
+                'px-4 py-2 rounded-[9px] transition-all font-medium whitespace-nowrap min-h-[44px] border',
+                activeTab === id
+                  ? 'bg-ice-accent/10 border-ice-line/40 text-ice-accent'
+                  : 'bg-ice-surface border-ice-line/15 text-ice-muted hover:text-ice-text',
+              )}
+              style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Refresh Button */}
         <button
           onClick={handleRefresh}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/5 min-h-[44px] self-start sm:self-auto"
+          className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors px-3 py-2 rounded-lg hover:bg-ice-line/[0.06] min-h-[44px] self-start sm:self-auto"
           disabled={holdingsLoading || txLoading}
         >
-          <RefreshCw className={cn("w-4 h-4", (holdingsLoading || txLoading) && "animate-spin")} />
-          <span className="hidden sm:inline" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+          <RefreshCw className={cn('w-4 h-4', (holdingsLoading || txLoading) && 'animate-spin')} />
+          <span className="hidden sm:inline" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
             {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Refresh'}
           </span>
         </button>

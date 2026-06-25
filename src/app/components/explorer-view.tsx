@@ -10,7 +10,7 @@ import { TransactionStream } from './transaction-stream';
 
 // Loading skeleton component
 function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/10 rounded ${className}`} />;
+  return <div className={`animate-pulse bg-ice-line/[0.08] rounded ${className}`} />;
 }
 
 // Error display component
@@ -74,7 +74,7 @@ function AnimatedBlockNumber({ value }: { value: number }) {
 
   return (
     <span
-      className={cn("text-white font-medium", isChanged && "animate-pulse")}
+      className={cn("text-ice-text font-medium", isChanged && "animate-pulse")}
       style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
     >
       {displayValue.toLocaleString()}
@@ -125,17 +125,17 @@ export function ExplorerView() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {/* TPS */}
-          <div className="bg-white/[0.02] p-4 rounded-xl">
+          <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 flex items-center justify-center rounded-lg">
-                <Activity className="w-5 h-5 text-slate-400" />
+              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
+                <Activity className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>TPS</div>
+                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>TPS</div>
                 {tpsLoading ? (
                   <Skeleton className="h-5 w-12" />
                 ) : (
-                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
                     {chartTpsData.length > 0 ? chartTpsData[chartTpsData.length - 1]?.tps || '-' : '-'}
                   </div>
                 )}
@@ -144,13 +144,13 @@ export function ExplorerView() {
           </div>
 
           {/* Block Time */}
-          <div className="bg-white/[0.02] p-4 rounded-xl">
+          <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 flex items-center justify-center rounded-lg">
-                <Zap className="w-5 h-5 text-slate-400" />
+              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
+                <Zap className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Block Time</div>
+                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Block Time</div>
                 {blocksLoading && blocks.length === 0 ? (
                   <Skeleton className="h-5 w-16" />
                 ) : (
@@ -161,13 +161,13 @@ export function ExplorerView() {
           </div>
 
           {/* Latest Block */}
-          <div className="bg-white/[0.02] p-4 rounded-xl">
+          <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 flex items-center justify-center rounded-lg">
-                <Box className="w-5 h-5 text-slate-400" />
+              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
+                <Box className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Latest Block</div>
+                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Latest Block</div>
                 {blocksLoading && blocks.length === 0 ? (
                   <Skeleton className="h-5 w-24" />
                 ) : (
@@ -178,17 +178,17 @@ export function ExplorerView() {
           </div>
 
           {/* Validators */}
-          <div className="bg-white/[0.02] p-4 rounded-xl">
+          <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 flex items-center justify-center rounded-lg">
-                <Users className="w-5 h-5 text-slate-400" />
+              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
+                <Users className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Validators</div>
+                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Validators</div>
                 {validatorsLoading ? (
                   <Skeleton className="h-5 w-14" />
                 ) : (
-                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
                     {validatorCount.toLocaleString()}
                   </div>
                 )}
@@ -197,17 +197,17 @@ export function ExplorerView() {
           </div>
 
           {/* Total Transactions */}
-          <div className="bg-white/[0.02] p-4 rounded-xl">
+          <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 flex items-center justify-center rounded-lg">
-                <Server className="w-5 h-5 text-slate-400" />
+              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
+                <Server className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Total TXs</div>
+                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Total TXs</div>
                 {statsLoading ? (
                   <Skeleton className="h-5 w-16" />
                 ) : (
-                  <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
                     {stats ? formatLargeNumber(stats.total_txs) : '-'}
                   </div>
                 )}
@@ -216,15 +216,15 @@ export function ExplorerView() {
           </div>
 
           {/* AVAX Price */}
-          <div className="bg-white/[0.02] p-4 rounded-xl">
+          <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
               <div>
-                <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>AVAX</div>
+                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>AVAX</div>
                 {priceLoading ? (
                   <Skeleton className="h-5 w-16" />
                 ) : (
                   <>
-                    <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                    <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
                       ${avaxPrice.toFixed(2)}
                     </div>
                     <div
@@ -241,9 +241,9 @@ export function ExplorerView() {
         </div>
 
         {/* TPS Chart */}
-        <div className="bg-white/[0.02] p-4 rounded-xl flex flex-col min-h-[200px] md:min-h-0">
+        <div className="bg-ice-surface p-4 rounded-xl flex flex-col min-h-[200px] md:min-h-0">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
               TPS (24H)
             </div>
             <div className="flex items-center gap-1.5">

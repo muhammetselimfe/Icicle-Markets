@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, TrendingUp, Clock, Grid3X3, Coins, ChevronDown } from 'lucide-react';
+import { Target, Coins, ChevronDown } from 'lucide-react';
+import { ErrorState } from '@/app/components/ui/data-states';
 import { useAccount, useReadContract, usePublicClient, useWalletClient } from 'wagmi';
 import { cn } from '@/app/components/ui/utils';
 import { useOptionsMarkets } from '@/app/hooks/useOptionsMarkets';
@@ -10,6 +11,7 @@ import { useChainSwitch } from '@/app/hooks/useChainSwitch';
 import { useChainId } from 'wagmi';
 import { CHAIN_IDS, OPTIONS_CONTRACTS } from '@/app/config/wagmi';
 import { ERC20_ABI } from '@/app/config/options-abis';
+import { OptionMarketCard } from '@/app/components/option-market-card';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-white/10 rounded ${className}`} />;
@@ -17,25 +19,19 @@ function Skeleton({ className = '' }: { className?: string }) {
 
 function StateBadge({ state, label }: { state: MarketState; label: string }) {
   const colors: Record<number, string> = {
-    [MarketState.Trading]: 'bg-green-500/10 text-green-400',
+    [MarketState.Trading]: 'bg-ice-up/[0.08] text-ice-up border border-ice-up/20',
     [MarketState.SettlementOpen]: 'bg-yellow-500/10 text-yellow-400',
     [MarketState.PendingOps]: 'bg-yellow-500/10 text-yellow-400',
-    [MarketState.FinalizedPrimary]: 'bg-slate-500/10 text-slate-400',
-    [MarketState.FinalizedSecondary]: 'bg-slate-500/10 text-slate-400',
-    [MarketState.FailedPendingManual]: 'bg-red-500/10 text-red-400',
+    [MarketState.FinalizedPrimary]: 'bg-ice-line/[0.06] text-ice-faint',
+    [MarketState.FinalizedSecondary]: 'bg-ice-line/[0.06] text-ice-faint',
+    [MarketState.FailedPendingManual]: 'bg-ice-down/10 text-ice-down',
   };
-  const isLive = state === MarketState.Trading;
   return (
     <span
-      className={cn('px-2.5 py-1 rounded-lg font-medium inline-flex items-center gap-1.5', colors[state] ?? 'bg-white/5 text-slate-400')}
-      style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}
+      className={cn('px-2.5 py-1 rounded-md font-mono inline-flex items-center gap-1.5', colors[state] ?? 'bg-ice-line/[0.06] text-ice-faint')}
+      style={{ fontSize: '11px' }}
     >
-      {isLive && (
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-        </span>
-      )}
+      {state === MarketState.Trading && <span className="w-1.5 h-1.5 rounded-full bg-ice-up" />}
       {label}
     </span>
   );
@@ -46,44 +42,63 @@ function formatTimestamp(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function useCountdown(targetUnix: number) {
-  const [remaining, setRemaining] = useState(() => Math.max(0, targetUnix - Math.floor(Date.now() / 1000)));
-
-  useEffect(() => {
-    if (remaining <= 0) return;
-    const id = setInterval(() => {
-      const left = Math.max(0, targetUnix - Math.floor(Date.now() / 1000));
-      setRemaining(left);
-      if (left <= 0) clearInterval(id);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [targetUnix]);
-
-  if (remaining <= 0) return null;
-
-  const d = Math.floor(remaining / 86400);
-  const h = Math.floor((remaining % 86400) / 3600);
-  const m = Math.floor((remaining % 3600) / 60);
-  const s = remaining % 60;
-
-  if (d > 0) return `${d}d ${h}h ${m}m`;
-  if (h > 0) return `${h}h ${m}m ${s}s`;
-  return `${m}m ${s}s`;
+function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="flex-1 rounded-2xl bg-ice-surface border border-ice-line/15 p-4 lg:p-[18px] flex flex-col gap-2.5">
+      <span className="font-mono text-ice-faint uppercase" style={{ fontSize: '10px', letterSpacing: '1px' }}>{label}</span>
+      <span className={cn('font-mono font-semibold leading-none', accent ? 'text-ice-accent' : 'text-ice-text')} style={{ fontSize: '22px' }}>
+        {value}
+      </span>
+    </div>
+  );
 }
 
 export function OptionsView() {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
 
-  const { markets, loading: marketsLoading, error: marketsError } = useOptionsMarkets();
+  const { markets, loading: marketsLoading, error: marketsError, refetch: refetchMarkets } = useOptionsMarkets();
+
+  const liveCount = markets.filter((m) => m.state === MarketState.Trading).length;
+  const settledCount = markets.length - liveCount;
+  const assetCount = new Set(markets.map((m) => m.assetSymbol)).size;
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
+      {/* Section header */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-9 h-9 shrink-0 rounded-[9px] bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
+          <Target className="w-[18px] h-[18px] text-ice-accent" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-ice-text font-bold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px' }}>
+            Icicle Options
+          </div>
+          <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+            Prediction markets on Avalanche. Pick a price range, trade, and win if you're right.
+          </p>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-ice-surface border border-ice-line/15">
+          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+          <span className="font-mono text-yellow-400" style={{ fontSize: '12px' }}>Fuji Testnet</span>
+        </div>
+      </div>
+
+      {/* Stats strip */}
+      {!marketsError && (
+        <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-6">
+          <StatCard label="Live Markets" value={marketsLoading ? '—' : String(liveCount)} accent />
+          <StatCard label="Settled" value={marketsLoading ? '—' : String(settledCount)} />
+          <StatCard label="Total Markets" value={marketsLoading ? '—' : String(markets.length)} />
+          <StatCard label="Assets" value={marketsLoading ? '—' : String(assetCount)} />
+        </div>
+      )}
+
       {/* Testnet info banner with faucet */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-white/5 rounded-xl">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-ice-surface border border-ice-line/15 rounded-xl">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <div className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" />
-          <span className="text-slate-400" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+          <span className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
             Options markets are in testnet. You may need to switch networks when trading.
           </span>
         </div>
@@ -92,17 +107,17 @@ export function OptionsView() {
 
       {/* Markets */}
       {marketsError ? (
-        <div className="flex items-center justify-center gap-2 p-12 text-red-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
-          <AlertCircle className="w-5 h-5" />
-          {marketsError}
-        </div>
+        <ErrorState message={marketsError} onRetry={refetchMarkets} />
       ) : marketsLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-white/[0.02] border border-white/5 p-5 rounded-2xl space-y-4">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-full" />
+            <div key={i} className="bg-ice-surface border border-ice-line/15 p-[18px] rounded-2xl space-y-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="flex-1"><Skeleton className="h-4 w-24 mb-1.5" /><Skeleton className="h-3 w-16" /></div>
+                <Skeleton className="h-5 w-16" />
+              </div>
+              <Skeleton className="h-[68px] w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
           ))}
@@ -176,19 +191,19 @@ export function ClaimTestUsdcButton() {
 
   return (
     <div className="flex items-center gap-3 w-full sm:w-auto">
-      <span className="text-slate-400" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-        Balance: <span className="text-white font-medium">{balanceStr}</span>
+      <span className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+        Balance: <span className="text-ice-text font-mono font-medium">{balanceStr}</span>
       </span>
       <button
         onClick={handleClaim}
         disabled={isBusy}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap',
+          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap border',
           isSuccess
-            ? 'bg-green-500/10 text-green-400'
+            ? 'bg-ice-up/10 text-ice-up border-ice-up/20'
             : isBusy
-            ? 'bg-white/5 text-slate-500 cursor-not-allowed'
-            : 'bg-[#8be4ff]/10 text-[#8be4ff] hover:bg-[#8be4ff]/20',
+            ? 'bg-ice-line/[0.06] text-ice-faint border-transparent cursor-not-allowed'
+            : 'bg-ice-accent/10 text-ice-accent border-ice-line/30 hover:bg-ice-accent/20',
         )}
         style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}
       >
@@ -214,77 +229,7 @@ function AssetLogo({ src, symbol }: { src: string; symbol: string }) {
   return <img src={src} alt={symbol} className="w-8 h-8 rounded-full" onError={() => setFailed(true)} />;
 }
 
-function MarketCard({ market: m, onTrade }: { market: import('@/app/types/options').MarketDisplay; onTrade: () => void }) {
-  const isActive = m.state === MarketState.Trading;
-  const countdown = useCountdown(m.tradingEnd);
-
-  return (
-    <div
-      onClick={onTrade}
-      className={cn(
-        'bg-white/[0.02] border rounded-2xl transition-all cursor-pointer overflow-hidden',
-        isActive
-          ? 'border-green-500/20 hover:border-green-500/30 hover:bg-white/[0.04]'
-          : 'border-white/5 hover:border-white/10 hover:bg-white/[0.04]',
-      )}
-    >
-      {/* Accent bar for active markets */}
-      {isActive && (
-        <div className="h-1 bg-gradient-to-r to-transparent" style={{ backgroundImage: `linear-gradient(to right, ${m.accentColor}, transparent)` }} />
-      )}
-
-      <div className="p-5 space-y-4">
-        {/* Header: logo + title + badge */}
-        <div className="flex items-center gap-3">
-          <AssetLogo src={m.assetLogo} symbol={m.assetSymbol} />
-          <div className="flex-1 min-w-0">
-            <div className="text-white font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '16px' }}>
-              {m.assetSymbol}/USD
-            </div>
-            <div className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-              Market #{m.marketId}
-            </div>
-          </div>
-          <StateBadge state={m.state} label={m.stateLabel} />
-        </div>
-
-        {/* Info rows */}
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-slate-500 shrink-0" />
-            <span className="text-white" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
-              {formatTickAsPrice(m.minTick, m.tickDivisor)} – {formatTickAsPrice(m.maxTick, m.tickDivisor)}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-500 shrink-0" />
-            <span className="text-slate-400" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-              {formatTimestamp(m.tradingStart)} – {formatTimestamp(m.tradingEnd)}
-            </span>
-          </div>
-          {isActive && countdown && (
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-green-400 shrink-0" />
-              <span className="text-green-400 font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-                Closes in {countdown}
-              </span>
-            </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Grid3X3 className="w-4 h-4 text-slate-500 shrink-0" />
-            <span className="text-slate-400" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-              {m.numBins} bins
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function MarketsListing({ markets, onTrade }: { markets: MarketDisplay[]; onTrade: (id: number) => void }) {
-  const [settledOpen, setSettledOpen] = useState(false);
-
   const liveMarkets = [...markets]
     .filter((m) => m.state === MarketState.Trading)
     .sort((a, b) => b.marketId - a.marketId);
@@ -292,42 +237,40 @@ function MarketsListing({ markets, onTrade }: { markets: MarketDisplay[]; onTrad
     .filter((m) => m.state !== MarketState.Trading)
     .sort((a, b) => b.marketId - a.marketId);
 
+  // Default the settled list open when there's nothing live to show, so the
+  // page is immediately useful instead of an empty void.
+  const [settledOpen, setSettledOpen] = useState(liveMarkets.length === 0);
+
   return (
     <div className="space-y-6">
       {/* Live Markets */}
-      {liveMarkets.length > 0 && (
+      {liveMarkets.length > 0 ? (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <h3 className="text-slate-300 font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+            <div className="w-2 h-2 rounded-full bg-ice-up" />
+            <h3 className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
               Live ({liveMarkets.length})
             </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {liveMarkets.map((m) => (
-              <MarketCard key={m.marketId} market={m} onTrade={() => onTrade(m.marketId)} />
+              <OptionMarketCard key={m.marketId} market={m} onClick={() => onTrade(m.marketId)} />
             ))}
           </div>
         </div>
+      ) : (
+        <EmptyState message="No live markets right now — check back soon or browse settled markets below." />
       )}
 
       {/* Settled Markets — compact rows, collapsible */}
       {settledMarkets.length > 0 && (
         <div>
-          <button
-            onClick={() => setSettledOpen((o) => !o)}
-            className="flex items-center gap-2 mb-3 group"
-          >
-            <div className="w-2 h-2 rounded-full bg-slate-500" />
-            <h3 className="text-slate-500 font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+          <button onClick={() => setSettledOpen((o) => !o)} className="flex items-center gap-2 mb-3 group">
+            <div className="w-2 h-2 rounded-full bg-ice-faint" />
+            <h3 className="text-ice-muted font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
               Settled ({settledMarkets.length})
             </h3>
-            <ChevronDown
-              className={cn(
-                'w-4 h-4 text-slate-500 transition-transform',
-                settledOpen && 'rotate-180',
-              )}
-            />
+            <ChevronDown className={cn('w-4 h-4 text-ice-faint transition-transform', settledOpen && 'rotate-180')} />
           </button>
           {settledOpen && (
             <div className="space-y-2">
@@ -346,23 +289,19 @@ function SettledMarketRow({ market: m, onTrade }: { market: MarketDisplay; onTra
   return (
     <div
       onClick={onTrade}
-      className="flex items-center gap-4 px-4 py-3 bg-white/[0.02] border border-white/5 rounded-xl cursor-pointer hover:border-white/10 hover:bg-white/[0.04] transition-all"
+      className="flex items-center gap-4 px-4 py-3 bg-ice-surface border border-ice-line/15 rounded-xl cursor-pointer hover:border-ice-line/30 hover:bg-ice-surface2 transition-all"
     >
       <AssetLogo src={m.assetLogo} symbol={m.assetSymbol} />
       <div className="flex-1 min-w-0">
-        <span className="text-white font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+        <span className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
           {m.assetSymbol}/USD
         </span>
-        <span className="text-slate-500 ml-2" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
-          #{m.marketId}
-        </span>
+        <span className="text-ice-faint font-mono ml-2" style={{ fontSize: '12px' }}>#{m.marketId}</span>
       </div>
-      <span className="text-slate-400 hidden sm:block" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+      <span className="text-ice-muted font-mono hidden sm:block" style={{ fontSize: '13px' }}>
         {formatTickAsPrice(m.minTick, m.tickDivisor)} – {formatTickAsPrice(m.maxTick, m.tickDivisor)}
       </span>
-      <span className="text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
-        {formatTimestamp(m.tradingEnd)}
-      </span>
+      <span className="text-ice-faint font-mono" style={{ fontSize: '12px' }}>{formatTimestamp(m.tradingEnd)}</span>
       <StateBadge state={m.state} label={m.stateLabel} />
     </div>
   );
@@ -370,9 +309,8 @@ function SettledMarketRow({ market: m, onTrade }: { market: MarketDisplay; onTra
 
 function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex items-center justify-center p-12 text-slate-500" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+    <div className="flex items-center justify-center text-center p-12 rounded-2xl bg-ice-surface border border-ice-line/15 text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
       {message}
     </div>
   );
 }
-

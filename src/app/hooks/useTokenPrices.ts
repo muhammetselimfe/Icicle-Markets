@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { coingecko, type CoinMarketData } from '../services/coingecko';
+import { getTokenPools } from '../services/geckoterminal';
 import { MARKETS_TOKENS, type TokenCategory } from '../data/markets-tokens';
 import { queryKeys } from './queryKeys';
 
@@ -105,6 +106,100 @@ export function useMarketStats(tokens: TokenData[]) {
     tokenCount,
     avgChange24h: weightedChange,
   };
+}
+
+// ── Single-token detail + chart (for the token details page) ────────────────
+export interface TokenDetail extends CoinMarketData {
+  address?: string;
+  category?: TokenCategory;
+  restricted?: boolean;
+}
+
+export function useTokenDetail(id: string | undefined) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.tokenDetail(id ?? ''),
+    queryFn: async (): Promise<TokenDetail | null> => {
+      const rows = await coingecko.getMarketData([id!], false);
+      const coin = rows[0];
+      if (!coin) return null;
+      const meta = MARKETS_TOKENS.find((t) => t.coingeckoId === id);
+      return {
+        ...coin,
+        symbol: (meta?.symbol || coin.symbol).toUpperCase(),
+        name: meta?.name || coin.name,
+        image: meta?.logoUrl || coin.image,
+        address: meta?.address,
+        category: meta?.category,
+        restricted: meta?.restricted,
+      };
+    },
+    enabled: !!id,
+    refetchInterval: 60_000,
+  });
+
+  return {
+    token: data ?? null,
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch token') : null,
+    refetch: async () => { await refetch(); },
+  };
+}
+
+export interface ChartPoint {
+  time: number;
+  price: number;
+}
+
+export function useTokenChart(id: string | undefined, days: number) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.tokenChart(id ?? '', days),
+    queryFn: async (): Promise<ChartPoint[]> => {
+      const res = await coingecko.getMarketChart(id!, days);
+      return res.prices.map(([time, price]) => ({ time, price }));
+    },
+    enabled: !!id,
+    refetchInterval: 60_000,
+  });
+
+  return {
+    data: data ?? [],
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch chart') : null,
+  };
+}
+
+export function useTokenPools(address: string | undefined) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.tokenPools(address ?? ''),
+    queryFn: () => getTokenPools(address!),
+    enabled: !!address,
+    staleTime: 60_000,
+  });
+  return {
+    pools: data ?? [],
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : 'Failed to fetch pools') : null,
+  };
+}
+
+export function useTokenVariants(ids: string[]) {
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.tokenVariants(ids.join(',')),
+    queryFn: () => coingecko.getMarketData(ids, false),
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+  });
+  return { variants: data ?? [], loading: isLoading };
+}
+
+export function useTokenInfo(id: string | undefined) {
+  const { data, isLoading } = useQuery({
+    queryKey: queryKeys.tokenInfo(id ?? ''),
+    queryFn: () => coingecko.getCoinInfo(id!),
+    enabled: !!id,
+    staleTime: 5 * 60_000,
+  });
+  return { info: data ?? null, loading: isLoading };
 }
 
 // Hook for curated market tokens with categories

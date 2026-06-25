@@ -39,6 +39,29 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Icicle ice tokens — LIGHT mode */
+  --ice-bg: #eef3fa;
+  --ice-surface: #ffffff;
+  --ice-surface2: #f1f5fb;
+  --ice-line: #2a4a6b;
+  --ice-accent: #0284c7;
+  --ice-accent2: #0ea5e9;
+  --ice-text: #0b1b2e;
+  --ice-muted: #4a5a72;
+  --ice-faint: #8294ad;
+  --ice-up: #16a34a;
+  --ice-down: #dc2626;
+  --glow-1: #7dd3fc;
+  --glow-2: #99f6e4;
+  --glow-opacity-1: 0.5;
+  --glow-opacity-2: 0.45;
+  --snow: rgba(30, 64, 110, 0.35);
+  /* trade chart (light) */
+  --chart-bar: #c5d2e3;
+  --chart-grid: #d3deec;
+  --chart-axis: #5b6b85;
+  --chart-tooltip-bg: #0b1b2e;
 }
 
 .dark {
@@ -76,6 +99,29 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+
+  /* Icicle ice tokens — DARK mode */
+  --ice-bg: #070b1f;
+  --ice-surface: #0e1430;
+  --ice-surface2: #141c3d;
+  --ice-line: #8be4ff;
+  --ice-accent: #8be4ff;
+  --ice-accent2: #4db8ff;
+  --ice-text: #eaf4ff;
+  --ice-muted: #8fa3c8;
+  --ice-faint: #5a6b91;
+  --ice-up: #4dff99;
+  --ice-down: #ff5c7a;
+  --glow-1: #1e3a8a;
+  --glow-2: #0e7490;
+  --glow-opacity-1: 0.35;
+  --glow-opacity-2: 0.28;
+  --snow: #ffffff;
+  /* trade chart (dark) */
+  --chart-bar: #475569;
+  --chart-grid: #334155;
+  --chart-axis: #64748b;
+  --chart-tooltip-bg: #1e293b;
 }
 
 @theme inline {
@@ -117,6 +163,21 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Icicle ice design tokens — theme-aware (values live in :root [light] and .dark).
+     Generates utilities like bg-ice-surface, text-ice-accent, border-ice-line/15, font-mono */
+  --color-ice-bg: var(--ice-bg);
+  --color-ice-surface: var(--ice-surface);
+  --color-ice-surface2: var(--ice-surface2);
+  --color-ice-line: var(--ice-line);
+  --color-ice-accent: var(--ice-accent);
+  --color-ice-accent2: var(--ice-accent2);
+  --color-ice-text: var(--ice-text);
+  --color-ice-muted: var(--ice-muted);
+  --color-ice-faint: var(--ice-faint);
+  --color-ice-up: var(--ice-up);
+  --color-ice-down: var(--ice-down);
+  --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
 }
 
 @layer base {

@@ -88,6 +88,20 @@ export function useOptionsTrading() {
         }
 
         setStep('opening');
+        console.log('[openPosition] args:', {
+          marketId: BigInt(params.marketId).toString(),
+          lowerTick: params.lowerTick.toString(),
+          upperTick: params.upperTick.toString(),
+          quantity: params.quantity.toString(),
+          maxCost: params.maxCost.toString(),
+          types: {
+            marketId: typeof params.marketId,
+            lowerTick: typeof params.lowerTick,
+            upperTick: typeof params.upperTick,
+            quantity: typeof params.quantity,
+            maxCost: typeof params.maxCost,
+          },
+        });
         const openGas = await publicClient.estimateContractGas({
           address: OPTIONS_CONTRACTS.core,
           abi: CORE_ABI,
@@ -119,7 +133,18 @@ export function useOptionsTrading() {
         await publicClient.waitForTransactionReceipt({ hash });
         setStep('success');
         invalidateOptions();
-      } catch (err) {
+      } catch (err: any) {
+        // Deep-log raw error for debugging
+        console.error('[openPosition] RAW ERROR:', err);
+        console.error('[openPosition] error.data:', err?.data);
+        console.error('[openPosition] error.cause:', err?.cause);
+        console.error('[openPosition] error.details:', err?.details);
+        if (err?.cause?.data) console.error('[openPosition] cause.data:', err.cause.data);
+        if (err?.walk) {
+          const walked = err.walk();
+          console.error('[openPosition] walked error:', walked);
+          console.error('[openPosition] walked.data:', walked?.data);
+        }
         handleTxError(err);
       }
     },
@@ -206,21 +231,120 @@ export function useOptionsTrading() {
     [address, walletClient, publicClient, invalidateOptions],
   );
 
-  function handleTxError(err: unknown) {
-    if (err instanceof Error) {
-      if (err.message.includes('User rejected') || err.message.includes('user rejected')) {
-        setError('Transaction rejected');
-      } else if (err.message.includes('insufficient funds')) {
-        setError('Insufficient balance');
-      } else if (err.message.includes('execution reverted')) {
-        setError('Transaction reverted — check parameters');
-      } else {
-        setError(err.message.slice(0, 100).split('\n')[0]);
+  const batchClaimPayout = useCallback(
+    async (positionIds: number[]) => {
+      if (!address || !walletClient || !publicClient) {
+        setError('Wallet not connected');
+        setStep('error');
+        return;
       }
+      if (positionIds.length === 0) return;
+
+      setStep('idle');
+      setError(null);
+      setTxHash(null);
+
+      try {
+        setStep('claiming');
+        const ids = positionIds.map((id) => BigInt(id));
+        const gas = await publicClient.estimateContractGas({
+          address: OPTIONS_CONTRACTS.core,
+          abi: CORE_ABI,
+          functionName: 'batchClaimPayout',
+          args: [ids],
+          account: address,
+        });
+        const hash = await walletClient.writeContract({
+          address: OPTIONS_CONTRACTS.core,
+          abi: CORE_ABI,
+          functionName: 'batchClaimPayout',
+          args: [ids],
+          gas: gas + gas / 4n,
+        });
+
+        setTxHash(hash);
+        await publicClient.waitForTransactionReceipt({ hash });
+        setStep('success');
+        invalidateOptions();
+      } catch (err) {
+        handleTxError(err);
+      }
+    },
+    [address, walletClient, publicClient, invalidateOptions],
+  );
+
+  function handleTxError(err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+
+    // Extract decoded error name from viem's error chain
+    // viem includes "errorName" in ContractFunctionRevertedError
+    const errorName = extractErrorName(err);
+
+    if (msg.includes('User rejected') || msg.includes('user rejected')) {
+      setError('Transaction rejected');
+    } else if (errorName === 'InsufficientBalance' || msg.includes('insufficient funds') || msg.includes('InsufficientBalance')) {
+      setError('Insufficient USDC balance');
+    } else if (errorName === 'CostExceedsMaximum' || msg.includes('CostExceedsMaximum')) {
+      setError('Price moved while submitting. Try again or increase slippage.');
+    } else if (errorName === 'InvalidQuantity' || msg.includes('InvalidQuantity')) {
+      setError('Invalid quantity - enter a valid amount');
+    } else if (errorName === 'MarketNotStarted' || msg.includes('MarketNotStarted')) {
+      setError('Market has not started trading yet');
+    } else if (errorName === 'MarketNotSeeded' || msg.includes('MarketNotSeeded')) {
+      setError('Market is not ready yet');
+    } else if (errorName === 'MarketExpired' || msg.includes('MarketExpired')) {
+      setError('Market has expired');
+    } else if (errorName === 'InvalidTick' || errorName === 'InvalidTickRange' || errorName === 'InvalidTickSpacing' || msg.includes('InvalidTickRange') || msg.includes('TickOutOfRange')) {
+      setError('Invalid price range selected');
+    } else if (errorName === 'PositionNotFound' || msg.includes('PositionNotFound')) {
+      setError('Position not found');
+    } else if (errorName === 'UnauthorizedCaller' || msg.includes('UnauthorizedCaller')) {
+      setError('You do not own this position');
+    } else if (errorName === 'MarketNotSettled' || msg.includes('MarketNotSettled')) {
+      setError('Market has not settled yet');
+    } else if (errorName === 'PayoutAlreadyClaimed' || msg.includes('PayoutAlreadyClaimed')) {
+      setError('Payout already claimed');
+    } else if (errorName === 'NoPayout' || msg.includes('NoPayout')) {
+      setError('No payout - position did not win');
+    } else if (errorName === 'ProceedsBelowMinimum' || msg.includes('ProceedsBelowMinimum')) {
+      setError('Sell price too low - try reducing slippage protection');
+    } else if (errorName === 'ClaimTooEarly' || msg.includes('ClaimTooEarly')) {
+      setError('Too early to claim - wait for the claim window to open');
+    } else if (errorName === 'InsufficientPositionQuantity' || msg.includes('InsufficientPositionQuantity')) {
+      setError('Insufficient position quantity');
+    } else if (errorName === 'AlphaExceedsLimit' || msg.includes('AlphaExceedsLimit')) {
+      setError('Market liquidity limit reached');
+    } else if (errorName === 'PerTicketCapExceeded' || errorName === 'PerAccountCapExceeded') {
+      setError('Position size exceeds market cap - try a smaller amount');
+    } else if (errorName === 'InsufficientFreeBalance') {
+      setError('Market has insufficient liquidity for this trade');
+    } else if (errorName === 'FeeExceedsBase') {
+      setError('Fee calculation error - try a different amount');
+    } else if (msg.includes('execution reverted')) {
+      setError('Transaction failed - try a smaller amount');
     } else {
-      setError('Transaction failed');
+      setError(msg.slice(0, 100).split('\n')[0]);
     }
     setStep('error');
+  }
+
+  /** Walk viem's error chain to find the decoded error name */
+  function extractErrorName(err: unknown): string | null {
+    if (!err || typeof err !== 'object') return null;
+    const e = err as Record<string, unknown>;
+    // viem ContractFunctionRevertedError has .data.errorName
+    if (e.cause && typeof e.cause === 'object') {
+      const cause = e.cause as Record<string, unknown>;
+      if (typeof cause.name === 'string' && cause.name === 'ContractFunctionRevertedError') {
+        if (cause.data && typeof cause.data === 'object') {
+          const data = cause.data as Record<string, unknown>;
+          if (typeof data.errorName === 'string') return data.errorName;
+        }
+      }
+      // Recurse one more level
+      return extractErrorName(cause);
+    }
+    return null;
   }
 
   const reset = useCallback(() => {
@@ -229,5 +353,5 @@ export function useOptionsTrading() {
     setError(null);
   }, []);
 
-  return { step, txHash, error, openPosition, closePosition, claimPayout, reset };
+  return { step, txHash, error, openPosition, closePosition, claimPayout, batchClaimPayout, reset };
 }

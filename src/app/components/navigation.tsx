@@ -14,10 +14,10 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   ];
 
   return (
-    <nav className="bg-[#0a0e27] py-3">
+    <nav className="py-3 relative z-10">
       <div className="container mx-auto px-4 md:px-6">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-          <div className="flex gap-1 p-1 bg-white/5 rounded-xl w-max md:w-fit">
+          <div className="flex gap-1 p-1 bg-ice-surface border border-ice-line/15 rounded-xl w-max md:w-fit">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -29,8 +29,8 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-lg transition-all font-medium min-h-[44px]",
                     isActive
-                      ? "bg-white/10 text-white"
-                      : "text-slate-400 hover:text-white"
+                      ? "bg-ice-accent/10 text-ice-accent"
+                      : "text-ice-muted hover:text-ice-text"
                   )}
                   style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                 >

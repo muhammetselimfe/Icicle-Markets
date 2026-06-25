@@ -47,8 +47,8 @@ function TransactionCard({
       }}
     >
       <div className={cn(
-        "relative bg-white/5 p-3 rounded-lg transition-all duration-300",
-        isNew ? "ring-1 ring-green-500/30" : "hover:bg-white/10"
+        "relative bg-ice-surface2 p-3 rounded-lg transition-all duration-300",
+        isNew ? "ring-1 ring-green-500/30" : "hover:bg-ice-line/[0.08]"
       )}>
         {isNew && (
           <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-transparent to-transparent rounded-lg" />
@@ -60,11 +60,11 @@ function TransactionCard({
             isNew
               ? "bg-green-500/10"
               : tx.success
-                ? "bg-white/10"
+                ? "bg-ice-line/[0.08]"
                 : "bg-red-500/10"
           )}>
             {tx.success ? (
-              <Activity className={cn("w-5 h-5", isNew ? "text-green-500" : "text-slate-400")} />
+              <Activity className={cn("w-5 h-5", isNew ? "text-green-500" : "text-ice-muted")} />
             ) : (
               <XCircle className="w-5 h-5 text-red-500" />
             )}
@@ -73,7 +73,7 @@ function TransactionCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={cn("font-medium", isNew ? "text-green-500" : "text-white")}
+                className={cn("font-medium", isNew ? "text-green-500" : "text-ice-text")}
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
                 {formatAddress(tx.hash, 10, 6)}
@@ -86,21 +86,21 @@ function TransactionCard({
                   NEW
                 </span>
               )}
-              <span className="text-slate-500">•</span>
-              <span className="flex items-center gap-1 text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-faint">•</span>
+              <span className="flex items-center gap-1 text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 {formatAddress(tx.from, 6, 4)}
                 <ArrowRight className="w-3 h-3" />
                 {tx.to ? formatAddress(tx.to, 6, 4) : 'CREATE'}
               </span>
-              <span className="text-slate-500">•</span>
-              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-faint">•</span>
+              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 {formatWei(tx.value)}
               </span>
             </div>
           </div>
 
           <div
-            className={cn("flex items-center gap-1", isNew ? "text-green-500" : "text-slate-500")}
+            className={cn("flex items-center gap-1", isNew ? "text-green-500" : "text-ice-faint")}
             style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
           >
             <Clock className="w-3 h-3" />
@@ -116,17 +116,17 @@ function TransactionCard({
 function TransactionSkeleton({ index }: { index: number }) {
   return (
     <div
-      className="relative bg-white/5 p-3 rounded-lg animate-pulse"
+      className="relative bg-ice-surface2 p-3 rounded-lg animate-pulse"
       style={{ animationDelay: `${index * 0.1}s` }}
     >
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-white/10 rounded-lg" />
+        <div className="w-10 h-10 bg-ice-line/[0.08] rounded-lg" />
         <div className="flex-1 flex items-center gap-3">
-          <div className="h-4 w-32 bg-white/10 rounded" />
-          <div className="h-3 w-40 bg-white/5 rounded" />
-          <div className="h-3 w-20 bg-white/5 rounded" />
+          <div className="h-4 w-32 bg-ice-line/[0.08] rounded" />
+          <div className="h-3 w-40 bg-ice-surface2 rounded" />
+          <div className="h-3 w-20 bg-ice-surface2 rounded" />
         </div>
-        <div className="h-4 w-16 bg-white/10 rounded" />
+        <div className="h-4 w-16 bg-ice-line/[0.08] rounded" />
       </div>
     </div>
   );
@@ -258,7 +258,7 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <h3 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
             Live Transactions
           </h3>
           <div className={cn(
@@ -279,18 +279,18 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="px-2.5 py-1 bg-white/5 rounded-lg">
-            <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+          <div className="px-2.5 py-1 bg-ice-surface2 rounded-lg">
+            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
               ~{tps.toFixed(1)} txs/sec
             </span>
           </div>
-          <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+          <div className="text-ice-faint" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
             Real-time feed
           </div>
         </div>
       </div>
 
-      <div className="relative bg-white/[0.02] overflow-hidden rounded-xl">
+      <div className="relative bg-ice-surface overflow-hidden rounded-xl">
         <div className="relative z-10 p-4 space-y-2 max-h-[520px] overflow-hidden">
           {loading ? (
             Array.from({ length: 10 }).map((_, i) => (
@@ -317,7 +317,7 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
           )}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#0a0e27] to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-ice-bg to-transparent pointer-events-none" />
       </div>
     </div>
   );

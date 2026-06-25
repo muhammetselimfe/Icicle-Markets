@@ -7,7 +7,7 @@ import { getRelativeTime } from '@/app/utils/time';
 import type { Block } from '@/app/types/api';
 
 function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/10 rounded-lg ${className}`} />;
+  return <div className={`animate-pulse bg-ice-line/[0.08] rounded-lg ${className}`} />;
 }
 
 export function BlockPage() {
@@ -63,7 +63,7 @@ export function BlockPage() {
         <div className="mb-6">
           <Skeleton className="h-8 w-48" />
         </div>
-        <div className="bg-white/[0.02] p-8 rounded-xl">
+        <div className="bg-ice-surface p-8 rounded-xl">
           <div className="space-y-6">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -82,7 +82,7 @@ export function BlockPage() {
       <div className="container mx-auto px-6 py-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors mb-6"
+          className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
@@ -93,7 +93,7 @@ export function BlockPage() {
           <h1 className="text-red-500 font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
             Block Not Found
           </h1>
-          <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <p className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
             {error || `Block #${blockNumber} could not be found`}
           </p>
         </div>
@@ -110,26 +110,26 @@ export function BlockPage() {
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors mb-6"
+        className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
       </button>
 
       {/* Main container */}
-      <div className="bg-white/[0.02] rounded-xl overflow-hidden">
+      <div className="bg-ice-surface rounded-xl overflow-hidden">
         <div className="p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
-                <Box className="w-7 h-7 text-slate-400" />
+              <div className="w-14 h-14 bg-ice-line/[0.08] rounded-xl flex items-center justify-center">
+                <Box className="w-7 h-7 text-ice-muted" />
               </div>
               <div>
-                <h1 className="text-white font-medium mb-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+                <h1 className="text-ice-text font-medium mb-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                   Block #{block.block_number.toLocaleString()}
                 </h1>
-                <div className="flex items-center gap-2 text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <div className="flex items-center gap-2 text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                   <Clock className="w-4 h-4" />
                   {formatDate(block.block_time)}
                   <span className="text-green-500">({getRelativeTime(block.block_time)})</span>
@@ -141,99 +141,99 @@ export function BlockPage() {
             <div className="flex items-center gap-2">
               <Link
                 to={`/block/${prevBlock}`}
-                className="flex items-center gap-1 px-4 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
-                <ChevronLeft className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Prev</span>
+                <ChevronLeft className="w-4 h-4 text-ice-muted" />
+                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Prev</span>
               </Link>
               <Link
                 to={`/block/${nextBlock}`}
-                className="flex items-center gap-1 px-4 py-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                className="flex items-center gap-1 px-4 py-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
-                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Next</span>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Next</span>
+                <ChevronRight className="w-4 h-4 text-ice-muted" />
               </Link>
             </div>
           </div>
 
           {/* Block Hash */}
-          <div className="bg-white/5 p-4 mb-4 rounded-lg">
+          <div className="bg-ice-surface2 p-4 mb-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Hash className="w-4 h-4 text-slate-400" />
-              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <Hash className="w-4 h-4 text-ice-muted" />
+              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Block Hash
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <code className="flex-1 text-white break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <code className="flex-1 text-ice-text break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                 {block.hash}
               </code>
               <button
                 onClick={() => copyToClipboard(block.hash, 'hash')}
-                className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
                 {copiedField === 'hash' ? (
                   <Check className="w-4 h-4 text-green-500" />
                 ) : (
-                  <Copy className="w-4 h-4 text-slate-400" />
+                  <Copy className="w-4 h-4 text-ice-muted" />
                 )}
               </button>
             </div>
           </div>
 
           {/* Parent Hash */}
-          <div className="bg-white/5 p-4 mb-4 rounded-lg">
+          <div className="bg-ice-surface2 p-4 mb-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Hash className="w-4 h-4 text-slate-400" />
-              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <Hash className="w-4 h-4 text-ice-muted" />
+              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Parent Hash
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 to={`/block/${prevBlock}`}
-                className="flex-1 text-white break-all hover:text-green-500 transition-colors"
+                className="flex-1 text-ice-text break-all hover:text-green-500 transition-colors"
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
                 {block.parent_hash}
               </Link>
               <button
                 onClick={() => copyToClipboard(block.parent_hash, 'parent')}
-                className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
                 {copiedField === 'parent' ? (
                   <Check className="w-4 h-4 text-green-500" />
                 ) : (
-                  <Copy className="w-4 h-4 text-slate-400" />
+                  <Copy className="w-4 h-4 text-ice-muted" />
                 )}
               </button>
             </div>
           </div>
 
           {/* Validated By */}
-          <div className="bg-white/5 p-4 mb-6 rounded-lg">
+          <div className="bg-ice-surface2 p-4 mb-6 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <Cpu className="w-4 h-4 text-slate-400" />
-              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <Cpu className="w-4 h-4 text-ice-muted" />
+              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Validated By
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 to={`/address/${block.miner}`}
-                className="flex-1 text-white break-all hover:text-green-500 transition-colors"
+                className="flex-1 text-ice-text break-all hover:text-green-500 transition-colors"
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
                 {block.miner}
               </Link>
               <button
                 onClick={() => copyToClipboard(block.miner, 'miner')}
-                className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                className="p-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
                 {copiedField === 'miner' ? (
                   <Check className="w-4 h-4 text-green-500" />
                 ) : (
-                  <Copy className="w-4 h-4 text-slate-400" />
+                  <Copy className="w-4 h-4 text-ice-muted" />
                 )}
               </button>
             </div>
@@ -246,66 +246,66 @@ export function BlockPage() {
               href={`https://snowtrace.io/block/${block.block_number}/txs`}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-white/5 p-4 rounded-lg hover:bg-white/10 transition-colors"
+              className="bg-ice-surface2 p-4 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                  <Zap className="w-4 h-4 text-ice-muted" />
+                  <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                     Transactions
                   </span>
                 </div>
-                <ExternalLink className="w-3 h-3 text-slate-500" />
+                <ExternalLink className="w-3 h-3 text-ice-faint" />
               </div>
-              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                 {block.tx_count ?? 0}
               </div>
             </a>
 
             {/* Size */}
-            <div className="bg-white/5 p-4 rounded-lg">
+            <div className="bg-ice-surface2 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Database className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <Database className="w-4 h-4 text-ice-muted" />
+                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                   Block Size
                 </span>
               </div>
-              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                 {(block.size / 1024).toFixed(2)} KB
               </div>
             </div>
 
             {/* Gas Used */}
-            <div className="bg-white/5 p-4 rounded-lg">
+            <div className="bg-ice-surface2 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Fuel className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <Fuel className="w-4 h-4 text-ice-muted" />
+                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                   Gas Used
                 </span>
               </div>
-              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                 {formatGas(block.gas_used)}
               </div>
-              <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="mt-3 h-2 bg-ice-line/[0.08] rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-green-500 to-yellow-500 rounded-full"
                   style={{ width: `${Math.min(parseFloat(gasPercentage), 100)}%` }}
                 />
               </div>
-              <div className="text-slate-500 mt-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+              <div className="text-ice-faint mt-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
                 {gasPercentage}% of {formatGas(block.gas_limit)}
               </div>
             </div>
 
             {/* Base Fee */}
-            <div className="bg-white/5 p-4 rounded-lg">
+            <div className="bg-ice-surface2 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Fuel className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <Fuel className="w-4 h-4 text-ice-muted" />
+                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                   Base Fee
                 </span>
               </div>
-              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                 {(block.base_fee_per_gas / 1e9).toFixed(2)} GWEI
               </div>
             </div>
@@ -316,10 +316,10 @@ export function BlockPage() {
             href={`https://snowtrace.io/block/${block.block_number}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+            className="flex items-center justify-center gap-3 p-4 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
           >
-            <ExternalLink className="w-4 h-4 text-slate-400" />
-            <span className="text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <ExternalLink className="w-4 h-4 text-ice-muted" />
+            <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
               View on Snowtrace
             </span>
           </a>

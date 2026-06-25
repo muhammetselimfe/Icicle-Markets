@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { usePrivy, useLogin } from '@privy-io/react-auth';
-import { Search, ChevronDown, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound, Network } from 'lucide-react';
+import { Search, ChevronDown, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound, Network, Sun, Moon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { cn } from '@/app/components/ui/utils';
 import { Input } from '@/app/components/ui/input';
 import {
@@ -38,8 +39,18 @@ function detectSearchType(query: string): 'tx' | 'address' | 'block' | 'unknown'
   return 'unknown';
 }
 
+// Deterministic flake set (computed once) so positions don't jump on re-render.
+const SNOWFLAKES = Array.from({ length: 16 }).map((_, i) => ({
+  left: (i * 6.27 + 3) % 100,
+  delay: Number(((i * 0.53) % 6).toFixed(2)),
+  duration: 6 + (i % 5),
+  size: i % 4 === 0 ? 3 : 2,
+}));
+
 export function Header() {
   const navigate = useNavigate();
+  const { resolvedTheme, setTheme } = useTheme();
+  const toggleTheme = () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
   const currentChainId = useChainId();
   const { address, isConnected } = useAccount();
   const { logout, authenticated } = usePrivy();
@@ -130,8 +141,25 @@ export function Header() {
   };
 
   return (
-    <header className="border-b border-white/10 bg-[#0f1535] sticky top-0 z-50">
-      <div className="container mx-auto px-4 md:px-6 py-3 md:py-4">
+    <header className="relative overflow-hidden border-b border-ice-line/15 bg-ice-surface sticky top-0 z-50">
+      {/* Snowfall — contained to the header */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        {SNOWFLAKES.map((s, i) => (
+          <span
+            key={i}
+            className="absolute top-0 rounded-full"
+            style={{
+              left: `${s.left}%`,
+              width: `${s.size}px`,
+              height: `${s.size}px`,
+              background: 'var(--snow)',
+              animation: `icicle-snow ${s.duration}s linear ${s.delay}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+      <style>{`@keyframes icicle-snow { 0% { transform: translateY(-6px); opacity: 0; } 20% { opacity: 0.6; } 100% { transform: translateY(96px); opacity: 0; } }`}</style>
+      <div className="relative z-10 container mx-auto px-4 md:px-6 py-3 md:py-4">
         {/* Mobile layout */}
         <div className="flex items-center justify-between md:hidden">
           <img
@@ -142,7 +170,7 @@ export function Header() {
           />
           <button
             onClick={() => setMobileMenuOpen(true)}
-            className="p-2 bg-white/5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 bg-ice-surface2 rounded-lg text-slate-400 hover:text-white hover:bg-ice-line/[0.08] transition-colors"
           >
             <Menu className="w-6 h-6" />
           </button>
@@ -164,7 +192,7 @@ export function Header() {
           <div className="flex-1">
             <div className="relative">
               <div className={cn(
-                "relative border border-white/10 rounded-xl",
+                "relative bg-ice-surface border border-ice-line/15 rounded-xl",
                 searchError && "ring-1 ring-red-500"
               )}>
                 {searching ? (
@@ -196,22 +224,30 @@ export function Header() {
           {/* Actions */}
           <div className="flex items-center gap-3">
             <button
+              onClick={toggleTheme}
+              className="w-10 h-10 rounded-xl bg-ice-surface border border-ice-line/15 hover:border-ice-line/30 transition-colors flex items-center justify-center"
+              title="Toggle theme"
+              aria-label="Toggle light/dark theme"
+            >
+              {resolvedTheme === 'dark' ? <Sun className="w-5 h-5 text-ice-muted" /> : <Moon className="w-5 h-5 text-ice-muted" />}
+            </button>
+            <button
               onClick={() => navigate('/explorer')}
-              className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors flex items-center justify-center"
+              className="w-10 h-10 rounded-xl bg-ice-surface border border-ice-line/15 hover:border-ice-line/30 transition-colors flex items-center justify-center"
               title="Explorer"
             >
-              <Network className="w-5 h-5 text-slate-400" />
+              <Network className="w-5 h-5 text-ice-muted" />
             </button>
             {isConnected ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="relative w-10 h-10 rounded-full bg-white/10 hover:bg-white/15 transition-colors flex items-center justify-center outline-none">
+                  <button className="relative w-10 h-10 rounded-full bg-ice-line/[0.08] hover:bg-ice-line/[0.1] transition-colors flex items-center justify-center outline-none">
                     <CircleUserRound className="w-5 h-5 text-slate-300" />
-                    <div className={cn("absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-[#0f1535]", networkDotColor)} />
+                    <div className={cn("absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-ice-surface", networkDotColor)} />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[200px] bg-[#0f1535] border-white/10">
-                  <div className="px-3 py-2 border-b border-white/10">
+                <DropdownMenuContent align="end" className="min-w-[200px] bg-ice-surface border-ice-line/15">
+                  <div className="px-3 py-2 border-b border-ice-line/15">
                     <p className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                       {address?.slice(0, 6)}...{address?.slice(-4)}
                     </p>
@@ -237,9 +273,10 @@ export function Header() {
             ) : (
               <button
                 onClick={() => handleLogin()}
-                className="bg-white/10 px-5 py-2.5 hover:bg-white/15 transition-all rounded-xl flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl flex items-center gap-2 transition-transform hover:-translate-y-px"
+                style={{ background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)', boxShadow: '0 2px 16px rgba(139,228,255,0.3)' }}
               >
-                <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <span className="font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#06223a' }}>
                   Sign In
                 </span>
               </button>
@@ -255,7 +292,7 @@ export function Header() {
             className="absolute inset-0 bg-black/70"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="absolute right-0 top-0 h-full w-72 bg-[#0f1535] border-l border-white/10 p-6 flex flex-col">
+          <div className="absolute right-0 top-0 h-full w-72 bg-ice-surface border-l border-ice-line/15 p-6 flex flex-col">
             {/* Close Button */}
             <div className="flex justify-end mb-6">
               <button
@@ -269,7 +306,7 @@ export function Header() {
             {/* Mobile Search */}
             <div className="mb-6">
               <div className={cn(
-                "relative bg-white/5 rounded-xl",
+                "relative bg-ice-surface2 rounded-xl",
                 searchError && "ring-1 ring-red-500"
               )}>
                 {searching ? (
@@ -307,7 +344,7 @@ export function Header() {
               {isConnected ? (
                 <div className="space-y-3">
                   {/* Address Display */}
-                  <div className="bg-white/5 px-4 py-3 rounded-lg flex items-center gap-2">
+                  <div className="bg-ice-surface2 px-4 py-3 rounded-lg flex items-center gap-2">
                     <div className={cn("w-2 h-2 rounded-full", networkDotColor)} />
                     <span
                       className="text-white font-medium"
@@ -323,7 +360,7 @@ export function Header() {
                       navigate('/portfolio');
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                    className="w-full px-4 py-3 bg-ice-surface2 rounded-lg flex items-center gap-2 hover:bg-ice-line/[0.08] transition-colors"
                   >
                     <Wallet className="w-4 h-4 text-slate-400" />
                     <span
@@ -337,7 +374,7 @@ export function Header() {
                   {/* Copy Address */}
                   <button
                     onClick={handleCopyAddress}
-                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                    className="w-full px-4 py-3 bg-ice-surface2 rounded-lg flex items-center gap-2 hover:bg-ice-line/[0.08] transition-colors"
                   >
                     {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
                     <span
@@ -354,7 +391,7 @@ export function Header() {
                       navigate('/explorer');
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                    className="w-full px-4 py-3 bg-ice-surface2 rounded-lg flex items-center gap-2 hover:bg-ice-line/[0.08] transition-colors"
                   >
                     <Network className="w-4 h-4 text-slate-400" />
                     <span
@@ -389,7 +426,7 @@ export function Header() {
                       handleLogin();
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full bg-white/10 px-5 py-3 hover:bg-white/15 transition-all rounded-lg flex items-center justify-center gap-2"
+                    className="w-full bg-ice-line/[0.08] px-5 py-3 hover:bg-ice-line/[0.1] transition-all rounded-lg flex items-center justify-center gap-2"
                   >
                     <span
                       className="text-white font-medium"
@@ -403,7 +440,7 @@ export function Header() {
                       navigate('/explorer');
                       setMobileMenuOpen(false);
                     }}
-                    className="w-full px-4 py-3 bg-white/5 rounded-lg flex items-center gap-2 hover:bg-white/10 transition-colors"
+                    className="w-full px-4 py-3 bg-ice-surface2 rounded-lg flex items-center gap-2 hover:bg-ice-line/[0.08] transition-colors"
                   >
                     <Network className="w-4 h-4 text-slate-400" />
                     <span

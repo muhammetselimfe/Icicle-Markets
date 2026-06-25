@@ -8,6 +8,7 @@ import { ExplorerView } from '@/app/components/explorer-view';
 import { OptionsView } from '@/app/components/options-view';
 import { PositionsView } from '@/app/components/positions-view';
 import { OptionsTradePage } from '@/app/components/options-trade-page';
+import { TokenPage } from '@/app/components/token-page';
 import { BlockPage, TransactionPage, AddressPage } from '@/app/pages';
 import { Toaster } from '@/app/components/ui/sonner';
 
@@ -53,41 +54,18 @@ function AppContent() {
                        location.pathname.startsWith('/address/');
 
   return (
-    <div className="min-h-screen bg-[#0a0e27] text-white relative overflow-hidden flex flex-col">
-      {/* Retro grid background */}
-      <div className="fixed inset-0 opacity-20 pointer-events-none" style={{
-        backgroundImage: `
-          linear-gradient(rgba(139, 228, 255, 0.1) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(139, 228, 255, 0.1) 1px, transparent 1px)
-        `,
-        backgroundSize: '50px 50px',
-        transform: 'perspective(500px) rotateX(60deg)',
-        transformOrigin: 'center top',
-      }} />
-
-      {/* Animated snow particles */}
-      <div className="fixed inset-0 pointer-events-none">
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-60"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `-${Math.random() * 20}%`,
-              animation: `snowfall ${10 + Math.random() * 20}s linear infinite`,
-              animationDelay: `${Math.random() * 10}s`,
-            }}
-          />
-        ))}
+    <div className="min-h-screen bg-ice-bg text-ice-text relative overflow-hidden flex flex-col">
+      {/* Atmospheric glows — theme-aware (see --glow-* tokens) */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute rounded-full"
+          style={{ top: '-140px', right: '-100px', width: '760px', height: '360px', background: 'var(--glow-1)', opacity: 'var(--glow-opacity-1)', filter: 'blur(120px)' }}
+        />
+        <div
+          className="absolute rounded-full"
+          style={{ top: '420px', left: '-180px', width: '620px', height: '320px', background: 'var(--glow-2)', opacity: 'var(--glow-opacity-2)', filter: 'blur(130px)' }}
+        />
       </div>
-
-      <style>{`
-        @keyframes snowfall {
-          to {
-            transform: translateY(100vh);
-          }
-        }
-      `}</style>
 
       <Header />
       {!isDetailPage && (
@@ -96,6 +74,7 @@ function AppContent() {
       <main className="flex-1 pb-8 relative z-10">
         <Routes>
           <Route path="/" element={<MarketsView />} />
+          <Route path="/token/:id" element={<TokenPage />} />
           <Route path="/portfolio" element={<PortfolioView />} />
           <Route path="/options" element={<OptionsView />} />
           <Route path="/options/trade/:marketId" element={<OptionsTradePage />} />

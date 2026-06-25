@@ -66,6 +66,32 @@ export const AVALANCHE_TOKEN_IDS: Record<string, string> = {
   'YAK': 'yield-yak',
 };
 
+export interface CoinTicker {
+  base: string;
+  target: string;
+  market: { name: string; identifier: string };
+  converted_last: { usd: number };
+  converted_volume: { usd: number };
+  trust_score: string | null;
+  trade_url: string | null;
+  bid_ask_spread_percentage?: number;
+}
+
+export interface CoinInfo {
+  id: string;
+  description: { en: string };
+  links: {
+    homepage: string[];
+    blockchain_site: string[];
+    twitter_screen_name: string;
+    subreddit_url: string;
+    repos_url: { github: string[] };
+  };
+  categories: string[];
+  market_data: { total_value_locked: { usd: number } | null };
+  tickers: CoinTicker[];
+}
+
 class CoinGeckoClient {
   private baseUrl: string;
   private cache: Map<string, { data: unknown; timestamp: number }> = new Map();
@@ -204,6 +230,13 @@ class CoinGeckoClient {
 
     return this.fetch<{ prices: [number, number][] }>(
       `/coins/${coinId}/market_chart?${params}`
+    );
+  }
+
+  // Full coin profile: description, links, categories, and market/DEX tickers.
+  async getCoinInfo(id: string): Promise<CoinInfo> {
+    return this.fetch<CoinInfo>(
+      `/coins/${id}?localization=false&tickers=true&market_data=true&community_data=false&developer_data=false&sparkline=false`,
     );
   }
 

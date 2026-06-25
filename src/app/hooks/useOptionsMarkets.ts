@@ -25,7 +25,7 @@ const F = {
 export function useOptionsMarkets() {
   const publicClient = usePublicClient({ chainId: CHAIN_IDS.FUJI });
 
-  const { data: markets, isLoading, error } = useQuery({
+  const { data: markets, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.optionsMarkets(),
     queryFn: async (): Promise<MarketDisplay[]> => {
       if (!publicClient) throw new Error('No public client');
@@ -101,7 +101,7 @@ export function useOptionsMarkets() {
             accentColor: asset.accentColor,
             priceDecimals: asset.priceDecimals,
             settlementTick: settled ? settlementTick : null,
-            settlementPrice: settled ? Number(settlementValue) / 1e6 : null,
+            settlementPrice: settled ? Number(settlementValue) / 1e6 / asset.tickDivisor : null,
           });
         } catch (err) {
           console.error(`Failed to fetch market ${id}:`, err);
@@ -119,5 +119,6 @@ export function useOptionsMarkets() {
     markets: markets ?? [],
     loading: isLoading,
     error: error ? (error instanceof Error ? error.message : 'Failed to fetch markets') : null,
+    refetch: async () => { await refetch(); },
   };
 }

@@ -8,7 +8,7 @@ import { getAddressName, getAddressInfo } from '@/app/data/known-addresses';
 import type { Transaction, NativeBalance } from '@/app/types/api';
 
 function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/10 rounded-lg ${className}`} />;
+  return <div className={`animate-pulse bg-ice-line/[0.08] rounded-lg ${className}`} />;
 }
 
 export function AddressPage() {
@@ -88,7 +88,7 @@ export function AddressPage() {
         <div className="mb-6">
           <Skeleton className="h-8 w-48" />
         </div>
-        <div className="bg-white/[0.02] p-8 rounded-xl">
+        <div className="bg-ice-surface p-8 rounded-xl">
           <div className="space-y-6">
             <Skeleton className="h-12 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -104,7 +104,7 @@ export function AddressPage() {
       <div className="container mx-auto px-6 py-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors mb-6"
+          className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
@@ -115,7 +115,7 @@ export function AddressPage() {
           <h1 className="text-red-500 font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
             Address Not Found
           </h1>
-          <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <p className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
             {error}
           </p>
         </div>
@@ -128,23 +128,23 @@ export function AddressPage() {
       {/* Back button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors mb-6"
+        className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
         <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
       </button>
 
       {/* Main container */}
-      <div className="bg-white/[0.02] rounded-xl overflow-hidden mb-6">
+      <div className="bg-ice-surface rounded-xl overflow-hidden mb-6">
         <div className="p-8">
           {/* Header */}
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-white/10 rounded-xl flex items-center justify-center">
-              <User className="w-7 h-7 text-slate-400" />
+            <div className="w-14 h-14 bg-ice-line/[0.08] rounded-xl flex items-center justify-center">
+              <User className="w-7 h-7 text-ice-muted" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                <h1 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                   {addressLabel || 'Address'}
                 </h1>
                 {addressType && (
@@ -152,8 +152,8 @@ export function AddressPage() {
                     className={`px-2 py-1 rounded-lg text-xs font-medium ${
                       addressType === 'exchange' ? 'bg-yellow-500/10 text-yellow-500' :
                       addressType === 'bridge' ? 'bg-green-500/10 text-green-500' :
-                      addressType === 'protocol' ? 'bg-white/10 text-white' :
-                      'bg-white/10 text-slate-400'
+                      addressType === 'protocol' ? 'bg-ice-line/[0.08] text-ice-text' :
+                      'bg-ice-line/[0.08] text-ice-muted'
                     }`}
                     style={{ fontFamily: "Inter, sans-serif" }}
                   >
@@ -162,17 +162,17 @@ export function AddressPage() {
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <code className="text-white break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <code className="text-ice-text break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                   {address}
                 </code>
                 <button
                   onClick={() => copyToClipboard(address || '', 'address')}
-                  className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+                  className="p-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
                 >
                   {copiedField === 'address' ? (
                     <Check className="w-4 h-4 text-green-500" />
                   ) : (
-                    <Copy className="w-4 h-4 text-slate-400" />
+                    <Copy className="w-4 h-4 text-ice-muted" />
                   )}
                 </button>
               </div>
@@ -181,24 +181,24 @@ export function AddressPage() {
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-white/5 p-4 rounded-lg">
-              <div className="text-slate-400 mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="bg-ice-surface2 p-4 rounded-lg">
+              <div className="text-ice-muted mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Total Transactions
               </div>
-              <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                 {stats.totalTxs}
               </div>
             </div>
-            <div className="bg-white/5 p-4 rounded-lg">
-              <div className="text-slate-400 mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="bg-ice-surface2 p-4 rounded-lg">
+              <div className="text-ice-muted mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Sent
               </div>
               <div className="text-red-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
                 {stats.sent}
               </div>
             </div>
-            <div className="bg-white/5 p-4 rounded-lg">
-              <div className="text-slate-400 mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="bg-ice-surface2 p-4 rounded-lg">
+              <div className="text-ice-muted mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Received
               </div>
               <div className="text-green-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
@@ -212,10 +212,10 @@ export function AddressPage() {
             href={`https://snowtrace.io/address/${address}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors"
+            className="flex items-center justify-center gap-3 p-4 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
           >
-            <ExternalLink className="w-4 h-4 text-slate-400" />
-            <span className="text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <ExternalLink className="w-4 h-4 text-ice-muted" />
+            <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
               View on Snowtrace
             </span>
           </a>
@@ -223,30 +223,30 @@ export function AddressPage() {
       </div>
 
       {/* Transactions List */}
-      <div className="bg-white/[0.02] rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-white/10">
-          <h2 className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+      <div className="bg-ice-surface rounded-xl overflow-hidden">
+        <div className="p-4 border-b border-ice-line/15">
+          <h2 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
             Transactions
           </h2>
         </div>
 
         {transactions.length === 0 ? (
           <div className="p-8 text-center">
-            <Activity className="w-12 h-12 text-slate-500 mx-auto mb-4" />
-            <p className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <Activity className="w-12 h-12 text-ice-faint mx-auto mb-4" />
+            <p className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
               No transactions found for this address
             </p>
           </div>
         ) : (
           <>
-            <div className="divide-y divide-white/10">
+            <div className="divide-y divide-ice-line/15">
               {transactions.map((tx) => {
                 const isSent = tx.from.toLowerCase() === address?.toLowerCase();
                 return (
                   <Link
                     key={tx.hash}
                     to={`/tx/${tx.hash}`}
-                    className="block p-4 hover:bg-white/5 transition-colors"
+                    className="block p-4 hover:bg-ice-line/[0.06] transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       {/* Direction icon */}
@@ -259,7 +259,7 @@ export function AddressPage() {
                       {/* Transaction info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                          <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                             {formatAddress(tx.hash, 12, 8)}
                           </span>
                           <span className={`px-2 py-0.5 text-xs rounded font-medium ${
@@ -268,7 +268,7 @@ export function AddressPage() {
                             {isSent ? 'OUT' : 'IN'}
                           </span>
                         </div>
-                        <div className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                        <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                           {isSent ? (
                             <>To: {tx.to ? formatAddress(tx.to, 8, 6) : 'Contract Creation'}</>
                           ) : (
@@ -282,7 +282,7 @@ export function AddressPage() {
                         <div className={`font-medium ${isSent ? 'text-red-500' : 'text-green-500'}`} style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                           {isSent ? '-' : '+'}{formatWei(tx.value)}
                         </div>
-                        <div className="flex items-center gap-1 text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                        <div className="flex items-center gap-1 text-ice-faint" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
                           <Clock className="w-3 h-3" />
                           {getRelativeTime(tx.block_time)}
                         </div>
@@ -295,13 +295,13 @@ export function AddressPage() {
 
             {/* Load More */}
             {hasMore && (
-              <div className="p-4 border-t border-white/10">
+              <div className="p-4 border-t border-ice-line/15">
                 <button
                   onClick={loadMore}
                   disabled={loading}
-                  className="w-full p-3 bg-white/5 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+                  className="w-full p-3 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors disabled:opacity-50"
                 >
-                  <span className="text-slate-400 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                  <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                     {loading ? 'Loading...' : 'Load More'}
                   </span>
                 </button>

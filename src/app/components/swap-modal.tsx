@@ -23,13 +23,13 @@ function TokenLogo({ token, size = 'md' }: { token: { symbol: string; logoUrl?: 
       <img
         src={token.logoUrl}
         alt={token.symbol}
-        className={`${sizeClass} rounded-full bg-white/10`}
+        className={`${sizeClass} rounded-full bg-ice-line/[0.08]`}
       />
     );
   }
 
   return (
-    <div className={`${sizeClass} rounded-full bg-white/10 flex items-center justify-center text-slate-400 text-sm font-medium`}>
+    <div className={`${sizeClass} rounded-full bg-ice-line/[0.08] flex items-center justify-center text-ice-muted text-sm font-medium`}>
       {token.symbol.slice(0, 2)}
     </div>
   );
@@ -347,19 +347,19 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
-        <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
+        <div className="relative border border-ice-line/15 bg-ice-surface w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
           <div className="relative z-10 p-6 md:p-8 text-center">
             <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 rounded-2xl flex items-center justify-center">
               <Check className="w-10 h-10 text-green-500" />
             </div>
             <h2
-              className="text-white font-medium mb-2"
+              className="text-ice-text font-medium mb-2"
               style={{ fontFamily: "Inter, sans-serif", fontSize: '20px' }}
             >
               Transaction Successful
             </h2>
             <p
-              className="text-slate-400 mb-6"
+              className="text-ice-muted mb-6"
               style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
             >
               Your swap has been confirmed
@@ -369,7 +369,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
               href={`https://snowtrace.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-8"
+              className="inline-flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-8"
               style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
             >
               View on Snowtrace <ExternalLink className="w-4 h-4" />
@@ -377,7 +377,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
             <button
               onClick={handleClose}
-              className="w-full bg-white/5 hover:bg-white/10 text-white py-4 rounded-xl font-medium transition-colors"
+              className="w-full bg-ice-surface2 hover:bg-ice-line/[0.08] text-ice-text py-4 rounded-xl font-medium transition-colors"
               style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
             >
               Close
@@ -393,18 +393,18 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/70" onClick={() => { setShowTokenSelect(null); setShowAllTokens(false); }} />
-        <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md rounded-2xl max-h-[90vh] flex flex-col">
+        <div className="relative border border-ice-line/15 bg-ice-surface w-full max-w-md rounded-2xl max-h-[90vh] flex flex-col">
           <div className="relative z-10 flex flex-col max-h-full">
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
+            <div className="flex items-center justify-between p-5 border-b border-ice-line/15">
               <h2
-                className="text-white font-medium"
+                className="text-ice-text font-medium"
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}
               >
                 Select Token
               </h2>
               <button
                 onClick={() => { setShowTokenSelect(null); setShowAllTokens(false); }}
-                className="text-slate-400 hover:text-white transition-colors p-1"
+                className="text-ice-muted hover:text-ice-text transition-colors p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -416,7 +416,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                 value={tokenSearch}
                 onChange={(e) => setTokenSearch(e.target.value)}
                 placeholder="Search token..."
-                className="w-full bg-white/5 px-4 py-3 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-white/20"
+                className="w-full bg-ice-surface2 px-4 py-3 rounded-xl text-ice-text placeholder:text-ice-faint focus:outline-none focus:ring-1 focus:ring-white/20"
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
               />
             </div>
@@ -426,14 +426,14 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                 <button
                   key={token.address}
                   onClick={() => handleSelectToken(token)}
-                  className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/5 transition-colors min-h-[56px]"
+                  className="w-full flex items-center gap-4 px-5 py-3 hover:bg-ice-line/[0.06] transition-colors min-h-[56px]"
                 >
                   <TokenLogo token={token} size="md" />
                   <div className="text-left">
-                    <div className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                    <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
                       {token.symbol}
                     </div>
-                    <div className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    <div className="text-ice-faint" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                       {token.name}
                     </div>
                   </div>
@@ -443,7 +443,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
               {!tokenSearch && !showAllTokens && filteredTokens.length < allTokensCount && (
                 <button
                   onClick={() => setShowAllTokens(true)}
-                  className="w-full py-4 text-slate-400 hover:text-white hover:bg-white/5 transition-colors border-t border-white/10"
+                  className="w-full py-4 text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.06] transition-colors border-t border-ice-line/15"
                   style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                 >
                   Show all {allTokensCount} tokens
@@ -459,18 +459,18 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
-      <div className="relative border border-white/10 bg-[#0f1535] w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div className="relative border border-ice-line/15 bg-ice-surface w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
         <div className="relative z-10">
           {/* Header with Buy/Sell toggle */}
-          <div className="flex items-center justify-between p-4 border-b border-white/10">
-            <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+          <div className="flex items-center justify-between p-4 border-b border-ice-line/15">
+            <div className="flex gap-1 p-1 bg-ice-surface2 rounded-xl">
               <button
                 onClick={() => handleModeChange('buy')}
                 className={cn(
                   "px-6 py-2 rounded-lg transition-all font-medium",
                   mode === 'buy'
                     ? "bg-green-500/20 text-green-500"
-                    : "text-slate-400 hover:text-white"
+                    : "text-ice-muted hover:text-ice-text"
                 )}
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
@@ -482,7 +482,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                   "px-6 py-2 rounded-lg transition-all font-medium",
                   mode === 'sell'
                     ? "bg-red-500/20 text-red-500"
-                    : "text-slate-400 hover:text-white"
+                    : "text-ice-muted hover:text-ice-text"
                 )}
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
               >
@@ -494,14 +494,14 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                 onClick={() => setShowSettings(!showSettings)}
                 className={cn(
                   "p-2 rounded-lg transition-colors",
-                  showSettings ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5"
+                  showSettings ? "text-ice-text bg-ice-line/[0.08]" : "text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.06]"
                 )}
               >
                 <Settings className="w-5 h-5" />
               </button>
               <button
                 onClick={handleClose}
-                className="text-slate-400 hover:text-white transition-colors p-2"
+                className="text-ice-muted hover:text-ice-text transition-colors p-2"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -510,8 +510,8 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
           {/* Settings Panel */}
           {showSettings && (
-            <div className="p-4 border-b border-white/10 bg-white/[0.02]">
-              <div className="text-slate-400 mb-3" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="p-4 border-b border-ice-line/15 bg-ice-surface">
+              <div className="text-ice-muted mb-3" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                 Slippage Tolerance
               </div>
               <div className="flex gap-2">
@@ -522,8 +522,8 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                     className={cn(
                       "px-4 py-2 rounded-lg transition-all font-medium",
                       slippage === option.value && !customSlippage
-                        ? "bg-white/10 text-white"
-                        : "bg-white/5 text-slate-400 hover:text-white"
+                        ? "bg-ice-line/[0.08] text-ice-text"
+                        : "bg-ice-surface2 text-ice-muted hover:text-ice-text"
                     )}
                     style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                   >
@@ -536,10 +536,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                     value={customSlippage}
                     onChange={(e) => handleCustomSlippageChange(e.target.value)}
                     placeholder="Custom"
-                    className="w-full bg-white/5 rounded-lg px-3 py-2 text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    className="w-full bg-ice-surface2 rounded-lg px-3 py-2 text-ice-text placeholder:text-ice-faint focus:outline-none focus:ring-1 focus:ring-white/20"
                     style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>%</span>
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ice-faint" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>%</span>
                 </div>
               </div>
             </div>
@@ -548,37 +548,37 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
           {/* Pay Section */}
           <div className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                 {mode === 'buy' ? 'You pay' : 'You sell'}
               </span>
               {fromBalance && (
                 <button
                   onClick={handleMaxClick}
-                  className="text-slate-400 hover:text-white transition-colors"
+                  className="text-ice-muted hover:text-ice-text transition-colors"
                   style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
                 >
                   Balance: {parseFloat(formatUnits(fromBalance.value, fromBalance.decimals)).toFixed(4)}
                 </button>
               )}
             </div>
-            <div className="bg-white/5 p-4 rounded-xl">
+            <div className="bg-ice-surface2 p-4 rounded-xl">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setShowTokenSelect('from')}
-                  className="flex items-center gap-3 bg-white/10 px-4 py-2.5 rounded-lg hover:bg-white/15 transition-colors"
+                  className="flex items-center gap-3 bg-ice-line/[0.08] px-4 py-2.5 rounded-lg hover:bg-ice-line/[0.1] transition-colors"
                 >
                   <TokenLogo token={fromToken} size="sm" />
-                  <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                  <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                     {fromToken.symbol}
                   </span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <ChevronDown className="w-4 h-4 text-ice-muted" />
                 </button>
                 <input
                   type="text"
                   value={fromAmount}
                   onChange={(e) => setFromAmount(e.target.value)}
                   placeholder="0"
-                  className="flex-1 bg-transparent text-white text-right focus:outline-none min-w-0 font-medium text-2xl md:text-3xl"
+                  className="flex-1 bg-transparent text-ice-text text-right focus:outline-none min-w-0 font-medium text-2xl md:text-3xl"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 />
               </div>
@@ -588,28 +588,28 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
           {/* Receive Section */}
           <div className="px-5 pb-5">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
                 {mode === 'buy' ? 'You receive' : 'You get'}
               </span>
             </div>
-            <div className="bg-white/5 p-4 rounded-xl">
+            <div className="bg-ice-surface2 p-4 rounded-xl">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setShowTokenSelect('to')}
-                  className="flex items-center gap-3 bg-white/10 px-4 py-2.5 rounded-lg hover:bg-white/15 transition-colors"
+                  className="flex items-center gap-3 bg-ice-line/[0.08] px-4 py-2.5 rounded-lg hover:bg-ice-line/[0.1] transition-colors"
                 >
                   <TokenLogo token={toToken} size="sm" />
-                  <span className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                  <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
                     {toToken.symbol}
                   </span>
-                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                  <ChevronDown className="w-4 h-4 text-ice-muted" />
                 </button>
                 <div className="flex-1 text-right min-w-0">
                   {quoteLoading ? (
-                    <Loader2 className="w-8 h-8 animate-spin ml-auto text-slate-400" />
+                    <Loader2 className="w-8 h-8 animate-spin ml-auto text-ice-muted" />
                   ) : (
                     <span
-                      className={cn("font-medium text-2xl md:text-3xl", toAmount ? "text-white" : "text-slate-500")}
+                      className={cn("font-medium text-2xl md:text-3xl", toAmount ? "text-ice-text" : "text-ice-faint")}
                       style={{ fontFamily: "Inter, sans-serif" }}
                     >
                       {toAmount || '0'}
@@ -623,13 +623,13 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
           {/* Quote Summary */}
           {quote && fromAmount && !quoteLoading && (
             <div className="px-5 pb-4">
-              <div className="bg-white/[0.02] border border-white/5 p-4 rounded-xl space-y-3">
+              <div className="bg-ice-surface border border-ice-line/[0.06] p-4 rounded-xl space-y-3">
                 {exchangeRate && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                       Rate
                     </span>
-                    <span className="text-white" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    <span className="text-ice-text" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                       1 {fromToken.symbol} = {exchangeRate.toFixed(4)} {toToken.symbol}
                     </span>
                   </div>
@@ -637,10 +637,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
                 {minReceived && (
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                       Min. received
                     </span>
-                    <span className="text-white" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    <span className="text-ice-text" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                       {minReceived} {toToken.symbol}
                     </span>
                   </div>
@@ -648,10 +648,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
                 {/* Collapsible Route */}
                 {routeSteps.length > 0 && (
-                  <div className="pt-3 border-t border-white/5">
+                  <div className="pt-3 border-t border-ice-line/[0.06]">
                     <button
                       onClick={() => setShowRoute(!showRoute)}
-                      className="flex items-center justify-between w-full text-slate-400 hover:text-white transition-colors"
+                      className="flex items-center justify-between w-full text-ice-muted hover:text-ice-text transition-colors"
                       style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
                     >
                       <span>Route ({routeSteps.length} {routeSteps.length === 1 ? 'hop' : 'hops'})</span>
@@ -663,17 +663,17 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                         {routeSteps.map((step, index) => (
                           <div key={index} className="flex items-center gap-1">
                             {index === 0 && (
-                              <span className="text-white px-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                              <span className="text-ice-text px-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                                 {step.fromToken.symbol}
                               </span>
                             )}
-                            <span className="text-slate-400 px-2 py-1 bg-white/5 rounded" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                            <span className="text-ice-muted px-2 py-1 bg-ice-surface2 rounded" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
                               {step.protocol}
                             </span>
-                            <span className="text-white px-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                            <span className="text-ice-text px-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
                               {step.toToken.symbol}
                             </span>
-                            {index < routeSteps.length - 1 && <span className="text-slate-500">→</span>}
+                            {index < routeSteps.length - 1 && <span className="text-ice-faint">→</span>}
                           </div>
                         ))}
                       </div>
@@ -718,10 +718,10 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                 hasInsufficientBalance
                   ? "bg-red-500/10 text-red-500 cursor-not-allowed"
                   : isButtonDisabled()
-                  ? "bg-white/5 text-slate-500 cursor-not-allowed"
+                  ? "bg-ice-surface2 text-ice-faint cursor-not-allowed"
                   : mode === 'buy'
-                  ? "bg-green-500 text-white hover:bg-green-600"
-                  : "bg-red-500 text-white hover:bg-red-600"
+                  ? "bg-green-500 text-ice-text hover:bg-green-600"
+                  : "bg-red-500 text-ice-text hover:bg-red-600"
               )}
               style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
             >
@@ -737,7 +737,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                 href={`https://snowtrace.io/tx/${txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors"
                 style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
               >
                 View Transaction <ExternalLink className="w-4 h-4" />
