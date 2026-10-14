@@ -19,6 +19,8 @@ export interface AssetConfig {
   priceDecimals: number;
   /** Accent color for the market card */
   accentColor: string;
+  /** Typical daily volatility (1σ, fraction) — drives the "typical move" hint on the trade page */
+  dailyVol: number;
 }
 
 const ASSETS: AssetConfig[] = [
@@ -30,6 +32,7 @@ const ASSETS: AssetConfig[] = [
     tickDivisor: 100,
     priceDecimals: 2,
     logo: 'https://coin-images.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png',
+    dailyVol: 0.045,
     accentColor: '#E84142',
   },
   {
@@ -40,6 +43,7 @@ const ASSETS: AssetConfig[] = [
     tickDivisor: 1,
     priceDecimals: 0,
     logo: '/assets/oil.svg',
+    dailyVol: 0.025,
     accentColor: '#4a9eff',
   },
   {
@@ -50,6 +54,7 @@ const ASSETS: AssetConfig[] = [
     tickDivisor: 1,
     priceDecimals: 0,
     logo: '/assets/gold.svg',
+    dailyVol: 0.01,
     accentColor: '#FFD700',
   },
   {
@@ -60,6 +65,7 @@ const ASSETS: AssetConfig[] = [
     tickDivisor: 1,
     priceDecimals: 0,
     logo: 'https://coin-images.coingecko.com/coins/images/1/small/bitcoin.png',
+    dailyVol: 0.03,
     accentColor: '#F7931A',
   },
   {
@@ -70,6 +76,7 @@ const ASSETS: AssetConfig[] = [
     tickDivisor: 1,
     priceDecimals: 0,
     logo: 'https://coin-images.coingecko.com/coins/images/279/small/ethereum.png',
+    dailyVol: 0.04,
     accentColor: '#627EEA',
   },
 ];

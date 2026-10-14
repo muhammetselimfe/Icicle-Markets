@@ -13,6 +13,10 @@ export interface MarketDisplay {
   stateLabel: string;
   settled: boolean;
   isSeeded: boolean;
+  /** v2 oracle-anchored dynamic pricing market */
+  dynamicEnabled: boolean;
+  /** v2.1 price-jump circuit breaker tripped: trades revert until resumed */
+  tradingHalted: boolean;
   minTick: bigint;
   maxTick: bigint;
   tickSpacing: bigint;
@@ -38,6 +42,8 @@ export interface MarketDisplay {
   accentColor: string;
   /** Price formatting decimals */
   priceDecimals: number;
+  /** Typical daily volatility (1σ, fraction) */
+  dailyVol: number;
   /** Settlement tick (only set when settled=true) */
   settlementTick: bigint | null;
   /** Settlement price in human-readable dollars */

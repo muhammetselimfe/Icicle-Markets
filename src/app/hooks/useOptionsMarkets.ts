@@ -20,6 +20,10 @@ const F = {
   tickSpacing: 14,
   settlementTick: 15,
   settlementValue: 16,
+  dynamicEnabled: 24,
+  // v2.1 (appended)
+  dynVersion: 36,
+  tradingHalted: 37,
 } as const;
 
 export function useOptionsMarkets() {
@@ -71,6 +75,8 @@ export function useOptionsMarkets() {
           const tickSpacing = m[F.tickSpacing] as bigint;
           const settlementTick = m[F.settlementTick] as bigint;
           const settlementValue = m[F.settlementValue] as bigint;
+          const dynamicEnabled = Boolean(m[F.dynamicEnabled]);
+          const tradingHalted = Boolean(m[F.tradingHalted]); // undefined on pre-v2.1 cores => false
 
           const state = Number(stateRaw);
 
@@ -83,6 +89,8 @@ export function useOptionsMarkets() {
             stateLabel: getMarketStateLabel(state, settled),
             settled,
             isSeeded,
+            dynamicEnabled,
+            tradingHalted,
             minTick,
             maxTick,
             tickSpacing,
@@ -100,6 +108,7 @@ export function useOptionsMarkets() {
             assetLogo: asset.logo,
             accentColor: asset.accentColor,
             priceDecimals: asset.priceDecimals,
+            dailyVol: asset.dailyVol,
             settlementTick: settled ? settlementTick : null,
             settlementPrice: settled ? Number(settlementValue) / 1e6 / asset.tickDivisor : null,
           });

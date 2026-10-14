@@ -41,11 +41,21 @@ const FONT = { fontFamily: 'Inter, sans-serif' };
 
 const AMOUNT_PRESETS = [5, 10, 25];
 
+// Range presets in BINS around the bin that contains the current price. Percent presets
+// were far too wide for short markets (±1 % on a 15-min AVAX market is already 4 bins).
 const RANGE_PRESETS = [
-  { label: 'Tight ±1%', pct: 0.01 },
-  { label: 'Medium ±3%', pct: 0.03 },
-  { label: 'Wide ±5%', pct: 0.05 },
+  { label: 'Current bin', bins: 0 },
+  { label: '±1 bin', bins: 1 },
+  { label: '±2 bins', bins: 2 },
+  { label: '±5 bins', bins: 5 },
 ];
+
+/** Small 1 s clock for "x s ago" style labels */
+function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const id = setInterval(() => setNow(Date.now()), intervalMs); return () => clearInterval(id); }, [intervalMs]);
+  return now;
+}
 
 // --- Mini Sparkline ---
 function MiniSparkline({ data }: { data: { time: number; price: number }[] }) {
@@ -214,7 +224,9 @@ export function OptionsTradePage() {
   const market = markets.find((m) => m.marketId === marketId) ?? null;
 
   // Live price + chart (dynamic per asset)
-  const { price: currentPrice } = useRedstonePrice(market?.feedId ?? 'AVAX');
+  const { price: currentPrice, timestamp: priceTs } = useRedstonePrice(market?.feedId ?? 'AVAX');
+  const nowMs = useNow();
+  const priceAgeSec = priceTs > 0 ? Math.max(0, Math.round(nowMs / 1000 - priceTs)) : null;
   const [chartTimeframe, setChartTimeframe] = useState(1440); // minutes: 15, 60, 240, 1440
   const { data: chartData } = useAssetChartData(market?.coingeckoId ?? null, chartTimeframe, market?.feedId);
 
@@ -239,6 +251,8 @@ export function OptionsTradePage() {
   const [upperTick, setUpperTick] = useState<bigint | null>(null);
   const [spendInput, setSpendInput] = useState('');
   const [slippage, setSlippage] = useState(100);
+  // Receipt of the last submitted order (shown inline on success instead of a modal)
+  const [lastOrder, setLastOrder] = useState<{ lo: bigint; hi: bigint; units: number; paid: number; odds: number; perUnit: number } | null>(null);
   const [showSettings, setShowSettings] = useState(false);
 
   const isWrongChain = chainId !== CHAIN_IDS.FUJI;
@@ -273,6 +287,13 @@ export function OptionsTradePage() {
     reset();
   }, [marketId, reset]);
 
+  // Default chart timeframe = the market's own life (a 15-min market on a 1D chart is one pixel wide)
+  useEffect(() => {
+    if (!market) return;
+    const durationMin = (market.settlementTimestamp - market.tradingStart) / 60;
+    setChartTimeframe(durationMin <= 30 ? 60 : durationMin <= 240 ? 240 : 1440);
+  }, [market?.marketId, market?.tradingStart, market?.settlementTimestamp]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // USDC balance
   const { data: usdcBalance } = useReadContract({
     address: OPTIONS_CONTRACTS.usdc,
@@ -284,11 +305,15 @@ export function OptionsTradePage() {
   });
 
   // Spend → quantity + cost: single binary search inside React Query (no flickering)
+  // Quote the user's amount, or a $10 preview when the field is empty, so the panel
+  // always shows a payout and a price-impact figure for the selected range.
+  const PREVIEW_SPEND = '10';
+  const isPreview = !spendInput || spendInput === '0' || Number(spendInput) <= 0;
   const { quantity: resolvedQty, cost, maxSpend, loading: costLoading, error: costError } = useSpendToQuantity({
     marketId: market?.marketId ?? 0,
     lowerTick,
     upperTick,
-    spendUsdc: spendInput,
+    spendUsdc: isPreview ? PREVIEW_SPEND : spendInput,
   });
 
   // maxCost = actual converged cost + slippage buffer + view/execute mismatch buffer
@@ -303,9 +328,9 @@ export function OptionsTradePage() {
   }, [cost, slippage]);
 
   const hasInsufficientBalance = useMemo(() => {
-    if (!maxCost || usdcBalance === undefined) return false;
+    if (isPreview || !maxCost || usdcBalance === undefined) return false; // the $10 preview is not an order
     return maxCost > (usdcBalance as bigint);
-  }, [maxCost, usdcBalance]);
+  }, [isPreview, maxCost, usdcBalance]);
 
   // Win probability: sum of probabilities for selected bins
   const winProbability = useMemo(() => {
@@ -321,6 +346,13 @@ export function OptionsTradePage() {
     return Number(cost) / 1e6 / resolvedQty;
   }, [cost, resolvedQty]);
 
+  // Price impact: the marginal odds after the trade ≈ 2·avg − before (the CLMSR cost is
+  // convex, so the average price paid sits between the pre- and post-trade marginal price).
+  const oddsAfter = useMemo(() => {
+    if (avgPrice <= 0 || winProbability <= 0) return null;
+    return Math.max(winProbability, Math.min(0.999, 2 * avgPrice - winProbability));
+  }, [avgPrice, winProbability]);
+
   // Payout if win = resolvedQty (1 USDC per unit)
   const receiveIfWin = resolvedQty;
   const payoutMultiplier = useMemo(() => {
@@ -328,6 +360,14 @@ export function OptionsTradePage() {
     const costUsd = Number(cost) / 1e6;
     return costUsd > 0 ? resolvedQty / costUsd : 0;
   }, [cost, resolvedQty]);
+
+  // Typical 1σ move between now and settlement, from the asset's daily volatility
+  const typicalMove = useMemo(() => {
+    if (!market || currentPrice <= 0) return null;
+    const remaining = Math.max(0, market.settlementTimestamp - nowMs / 1000);
+    const sigma = market.dailyVol * Math.sqrt(remaining / 86400) * currentPrice;
+    return { abs: sigma, pct: currentPrice > 0 ? sigma / currentPrice : 0, bins: sigma / (Number(market.tickSpacing) / tickDivisor) };
+  }, [market, currentPrice, nowMs, tickDivisor]);
 
   // Last hour sparkline data from chart data (works for both CoinGecko and Redstone)
   const lastHourData = useMemo(
@@ -380,10 +420,11 @@ export function OptionsTradePage() {
       await switchForTab('options');
       return;
     }
-    if (!market || lowerTick === null || upperTick === null || !maxCost) return;
+    if (!market || lowerTick === null || upperTick === null || !maxCost || isPreview) return;
 
     const qtyMicro = BigInt(Math.round(resolvedQty * 1e6));
     if (qtyMicro <= 0n) return;
+    setLastOrder({ lo: lowerTick, hi: upperTick, units: resolvedQty, paid: cost ? Number(cost) / 1e6 : 0, odds: winProbability, perUnit: avgPrice });
 
     console.log('[handleOpenClick] params:', {
       marketId: market.marketId,
@@ -401,12 +442,15 @@ export function OptionsTradePage() {
       upperTick,
       quantity: qtyMicro,
       maxCost,
+      slippageBps: slippage,      // v2.1: re-quote right before sending
+      feedId: market.feedId,      // v2.1: attach the signed price to the trade
     });
-  }, [isConnected, isWrongChain, market, lowerTick, upperTick, maxCost, resolvedQty, switchForTab, openPosition, handleLogin]);
+  }, [isConnected, isWrongChain, market, lowerTick, upperTick, maxCost, resolvedQty, slippage, isPreview, cost, winProbability, avgPrice, switchForTab, openPosition, handleLogin]);
 
   const getButtonText = () => {
     if (!isConnected) return 'Sign In';
     if (isWrongChain) return 'Switch Network';
+    if (market?.tradingHalted) return 'Trading Paused';
     if (lowerTick === null || upperTick === null) return 'Select Range';
     if (!spendInput || spendInput === '0') return 'Enter Amount';
     if (costLoading) return 'Calculating...';
@@ -414,7 +458,7 @@ export function OptionsTradePage() {
     if (hasInsufficientBalance) return 'Insufficient USDC';
     if (step === 'approving') return 'Approving USDC...';
     if (step === 'opening') return 'Opening Position...';
-    if (step === 'success') return 'Success!';
+    if (step === 'success') return 'New Trade';
     if (step === 'error') return 'Try Again';
     return 'Open Position';
   };
@@ -422,6 +466,7 @@ export function OptionsTradePage() {
   const isButtonDisabled = () => {
     if (!isConnected) return false;
     if (isWrongChain) return false;
+    if (market?.tradingHalted) return true;
     if (lowerTick === null || upperTick === null) return true;
     if (!spendInput || spendInput === '0') return true;
     if (costLoading) return true;
@@ -468,59 +513,6 @@ export function OptionsTradePage() {
 
   return (
     <div>
-    {/* Success popup overlay */}
-    {step === 'success' && txHash && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => {
-            reset();
-            setSpendInput('');
-          }}
-        />
-        {/* Modal */}
-        <div className="relative border border-ice-line/15 bg-ice-surface rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl">
-          <div className="w-14 h-14 mx-auto mb-4 bg-ice-up/10 rounded-xl flex items-center justify-center">
-            <Check className="w-7 h-7 text-ice-up" />
-          </div>
-          <h2 className="text-ice-text font-medium mb-1.5" style={{ ...FONT, fontSize: '17px' }}>
-            Position Opened
-          </h2>
-          <p className="text-ice-muted mb-4" style={{ ...FONT, fontSize: '13px' }}>
-            Market #{marketId} — {formatTickAsPrice(lowerTick ?? 0n, tickDivisor)} to {formatTickAsPrice(upperTick ?? 0n, tickDivisor)}
-          </p>
-          <a
-            href={`https://testnet.snowtrace.io/tx/${txHash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-ice-faint hover:text-ice-text transition-colors mb-5"
-            style={{ ...FONT, fontSize: '12px' }}
-          >
-            View on Snowtrace <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/options')}
-              className="flex-1 px-4 py-2.5 bg-ice-surface2 hover:bg-ice-line/[0.08] text-ice-text rounded-xl font-medium transition-colors"
-              style={{ ...FONT, fontSize: '13px' }}
-            >
-              Markets
-            </button>
-            <button
-              onClick={() => {
-                reset();
-                setSpendInput('');
-                  }}
-              className="flex-1 px-4 py-2.5 bg-ice-up/10 hover:bg-ice-up/20 text-ice-up rounded-xl font-medium transition-colors"
-              style={{ ...FONT, fontSize: '13px' }}
-            >
-              Trade Again
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-6xl">
       {/* Back button */}
       <button
@@ -537,9 +529,9 @@ export function OptionsTradePage() {
         {/* ===== LEFT PANEL — Chart Area ===== */}
         <div className="border border-ice-line/15 bg-ice-surface rounded-2xl overflow-hidden">
           {/* Market Header */}
-          <div className="p-5 md:p-6 border-b border-ice-line/15">
+          <div className="p-4 md:p-5 border-b border-ice-line/15">
             <div className="flex items-center gap-3 min-w-0">
-              <AssetLogo src={market.assetLogo} symbol={market.assetSymbol} size={40} />
+              <AssetLogo src={market.assetLogo} symbol={market.assetSymbol} size={36} />
               <div className="min-w-0">
                 <h1 className="text-ice-text font-medium flex items-center gap-2 flex-wrap" style={{ ...FONT, fontSize: '18px' }}>
                   {market.assetSymbol}/USD
@@ -556,7 +548,7 @@ export function OptionsTradePage() {
 
           {/* Stats Row */}
           <div className="grid grid-cols-3 divide-x divide-ice-line/15 border-b border-ice-line/15">
-            <div className="p-4 md:p-5">
+            <div className="p-3.5 md:p-4">
               <div className="text-ice-faint mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {market.settled ? 'Settlement Price' : 'Current Price'}
                 <InfoTip text={market.settled
@@ -571,8 +563,13 @@ export function OptionsTradePage() {
                 }
                 {!market.settled && lastHourData.length > 1 && <MiniSparkline data={lastHourData} />}
               </div>
+              {!market.settled && priceAgeSec !== null && (
+                <div className={cn('mt-1', priceAgeSec > 90 ? 'text-amber-400' : 'text-ice-faint')} style={{ ...FONT, fontSize: '11px' }}>
+                  RedStone · {priceAgeSec < 60 ? `${priceAgeSec}s ago` : `${Math.floor(priceAgeSec / 60)}m ${priceAgeSec % 60}s ago`}
+                </div>
+              )}
             </div>
-            <div className="p-4 md:p-5">
+            <div className="p-3.5 md:p-4">
               <div className="text-ice-faint mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {market.settled ? 'Winning Bin' : 'Most Likely'}
                 <InfoTip text={market.settled
@@ -592,17 +589,23 @@ export function OptionsTradePage() {
                 )}
               </div>
             </div>
-            <div className="p-4 md:p-5">
+            <div className="p-3.5 md:p-4">
               <div className="text-ice-faint mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {market.settled ? 'Status' : expired ? 'Ended' : 'Ends In'}
+                {market.settled ? 'Status' : expired ? 'Trading Closed' : 'Trading Closes In'}
                 <InfoTip text={market.settled
                   ? 'This market has been settled. Winners can claim their payouts.'
-                  : 'Time remaining until trading closes. After this, the oracle reports the settlement price and winning positions can claim payouts.'
+                  : 'Trading stops before settlement. The oracle price at the settlement time decides the winning bin; winning positions can claim after that.'
                 } />
               </div>
               <div className={cn('font-semibold', market.settled ? 'text-ice-up' : 'text-ice-text')} style={{ fontSize: '20px', fontFamily: market.settled ? 'Inter, sans-serif' : undefined }}>
-                {market.settled ? 'Settled' : expired ? 'Closed' : <span className="font-mono">{countdown}</span>}
+                {market.settled ? 'Settled' : expired ? 'Settling…' : <span className="font-mono">{countdown}</span>}
               </div>
+              {!market.settled && market.settlementTimestamp > 0 && (
+                <div className="text-ice-faint mt-1" style={{ ...FONT, fontSize: '11px' }}>
+                  Settles at {formatTime(market.settlementTimestamp)}
+                  {market.settlementTimestamp > market.tradingEnd && ` · ${Math.round((market.settlementTimestamp - market.tradingEnd) / 60)} min after close`}
+                </div>
+              )}
               {!expired && !market.settled && (() => {
                 const now = Date.now() / 1000;
                 const total = market.tradingEnd - market.tradingStart;
@@ -631,7 +634,7 @@ export function OptionsTradePage() {
               <div className="flex items-center gap-3">
                 <span className="text-ice-text font-semibold" style={{ ...FONT, fontSize: '16px' }}>
                   Market Chart
-                  <InfoTip text="Price history with probability bars for each bin. Taller bars = more likely. Drag the blue handles to set your range. Use arrow keys to adjust." />
+                  <InfoTip text="Left: price history, with this market's trading window shaded. Right: the implied-odds ladder — what the market charges for each bin right now. Drag the blue handles or use the arrow keys to set your range." />
                 </span>
                 <div className="flex items-center gap-1">
                   {([
@@ -679,6 +682,8 @@ export function OptionsTradePage() {
                   numBins={market.numBins}
                   priceDecimals={market.priceDecimals}
                   timeframeMinutes={chartTimeframe}
+                  windowStart={market.tradingStart * 1000}
+                  windowEnd={market.tradingEnd * 1000}
                   onRangeChange={(newMin, newMax) => {
                     setLowerTick(BigInt(Math.round(newMin * tickDivisor)));
                     setUpperTick(BigInt(Math.round(newMax * tickDivisor)));
@@ -686,9 +691,8 @@ export function OptionsTradePage() {
                 />
                 {bins.length > 0 && (
                   <div className="mt-2 text-center" style={{ ...FONT, fontSize: '13px' }}>
-                    <span className="text-ice-faint">Your range captures </span>
+                    <span className="text-ice-faint">Market-implied odds for your range: </span>
                     <span className="text-ice-accent font-medium">{(winProbability * 100).toFixed(1)}%</span>
-                    <span className="text-ice-faint"> probability</span>
                   </div>
                 )}
 
@@ -701,6 +705,14 @@ export function OptionsTradePage() {
         <div className="border border-ice-line/15 bg-ice-surface rounded-2xl overflow-hidden flex flex-col">
           <div className="flex-1 flex flex-col">
             <div className="p-5 space-y-5 flex-1">
+                {market.tradingHalted && (
+                  <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <span className="text-amber-400" style={{ ...FONT, fontSize: '12px' }}>
+                      Trading is paused after a sharp price move. It resumes automatically once the next price reading confirms the new level, or when an operator resumes it. Settlement is not affected.
+                    </span>
+                  </div>
+                )}
                 {/* Slippage settings button */}
                 <div className="flex items-center justify-between">
                   <div className="text-ice-faint" style={{ ...FONT, fontSize: '12px' }}>
@@ -749,11 +761,12 @@ export function OptionsTradePage() {
                       <button
                         key={preset.label}
                         onClick={() => {
-                          const centerTick = (BigInt(Math.round(currentPrice * tickDivisor)) / market.tickSpacing) * market.tickSpacing;
-                          let spreadTicks = BigInt(Math.round(currentPrice * tickDivisor * preset.pct / Number(market.tickSpacing))) * market.tickSpacing;
-                          if (spreadTicks < market.tickSpacing) spreadTicks = market.tickSpacing;
-                          const lo = centerTick - spreadTicks < market.minTick ? market.minTick : centerTick - spreadTicks;
-                          const hi = centerTick + spreadTicks > market.maxTick ? market.maxTick : centerTick + spreadTicks;
+                          const ts = market.tickSpacing;
+                          // bin containing the current price: [centerTick, centerTick + spacing)
+                          const centerTick = (BigInt(Math.round(currentPrice * tickDivisor)) / ts) * ts;
+                          const k = BigInt(preset.bins);
+                          const lo = centerTick - k * ts < market.minTick ? market.minTick : centerTick - k * ts;
+                          const hi = centerTick + (k + 1n) * ts > market.maxTick ? market.maxTick : centerTick + (k + 1n) * ts;
                           setLowerTick(lo);
                           setUpperTick(hi);
                         }}
@@ -763,6 +776,13 @@ export function OptionsTradePage() {
                         {preset.label}
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {typicalMove && !market.settled && (
+                  <div className="text-ice-faint -mt-3" style={{ ...FONT, fontSize: '11px' }}>
+                    Typical move until settlement ≈ ±${typicalMove.abs.toFixed(market.priceDecimals === 0 ? 0 : 3)} ({(typicalMove.pct * 100).toFixed(2)}%, ~{typicalMove.bins.toFixed(1)} bins)
+                    <InfoTip text={`One standard deviation of ${market.assetSymbol}'s price over the time left to settlement, from its typical daily volatility (${(market.dailyVol * 100).toFixed(1)}%/day). A range much narrower than this is a long shot; much wider pays little.`} />
                   </div>
                 )}
 
@@ -798,15 +818,17 @@ export function OptionsTradePage() {
                   />
                 </div>
                 <div className="text-ice-faint text-center" style={{ ...FONT, fontSize: '11px' }}>
-                  You win if settlement price is at or above Min Price and below Max Price
+                  {lowerTick !== null && upperTick !== null
+                    ? <>Wins if {market.assetSymbol} settles in {formatTickAsPrice(lowerTick, tickDivisor)} – {formatTickAsPrice(upperTick, tickDivisor)} (at or above the low, below the high)</>
+                    : 'Wins if the settlement price is at or above Min Price and below Max Price'}
                 </div>
 
                 {/* Win Probability / Avg Price */}
                 <div className="flex gap-3">
                   <div className="flex-1 bg-ice-surface2 border border-ice-line/[0.06] rounded-xl p-3">
                     <div className="text-ice-faint mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Win Prob
-                      <InfoTip text="Sum of probabilities for all bins in your selected range. Higher = more likely to win, but costs more per share." />
+                      Implied Odds
+                      <InfoTip text="What the market currently charges for your range, read as odds (1 USDC probe per bin). This is a price, not a forecast: it moves with every trade and can be far from the real probability when the book is one-sided." />
                     </div>
                     <div className="text-ice-text font-semibold" style={{ ...FONT, fontSize: '18px' }}>
                       {binsLoading ? '...' : `${(winProbability * 100).toFixed(2)}%`}
@@ -814,14 +836,19 @@ export function OptionsTradePage() {
                   </div>
                   <div className="flex-1 bg-ice-surface2 border border-ice-line/[0.06] rounded-xl p-3">
                     <div className="text-ice-faint mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Avg Price
-                      <InfoTip text="Cost per share (payout unit). If you win, each share pays $1. Lower avg price = higher potential return." />
+                      Price per $1
+                      <InfoTip text="Average cost of one payout unit for this order. Each unit pays $1 if the settlement price is inside your range. Larger orders pay a higher average because every unit you buy raises the price of the next one." />
                     </div>
                     <div className="text-ice-text font-semibold" style={{ ...FONT, fontSize: '18px' }}>
-                      {costLoading ? '...' : avgPrice > 0 ? `$${avgPrice.toFixed(2)}` : '-'}
+                      {costLoading ? '...' : avgPrice > 0 ? `$${avgPrice.toFixed(avgPrice < 0.01 ? 4 : 2)}` : '-'}
                     </div>
                   </div>
                 </div>
+                {oddsAfter !== null && !costLoading && (
+                  <div className="text-ice-faint -mt-3 px-1" style={{ ...FONT, fontSize: '11px' }}>
+                    Price impact{isPreview ? ' of $10' : ''}: odds {(winProbability * 100).toFixed(1)}% → ≈{(oddsAfter * 100).toFixed(1)}% after your trade
+                  </div>
+                )}
 
                 {/* Spend input */}
                 <div>
@@ -894,12 +921,40 @@ export function OptionsTradePage() {
                   </div>
                 )}
 
-                {/* Payout summary */}
-                {resolvedQty > 0 && cost && (
+                {/* Inline receipt after a successful order (no modal: the chart and the new position stay visible) */}
+                {step === 'success' && lastOrder && (
+                  <div className="bg-ice-up/[0.06] border border-ice-up/25 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-2 text-ice-up font-medium" style={{ ...FONT, fontSize: '13px' }}>
+                      <Check className="w-4 h-4" /> Position opened
+                      {txHash && (
+                        <a href={`https://testnet.snowtrace.io/tx/${txHash}`} target="_blank" rel="noopener noreferrer"
+                          className="ml-auto inline-flex items-center gap-1 text-ice-faint hover:text-ice-text font-normal transition-colors" style={{ fontSize: '11px' }}>
+                          Tx <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                    {([
+                      ['Range', `${formatTickAsPrice(lastOrder.lo, tickDivisor)} – ${formatTickAsPrice(lastOrder.hi, tickDivisor)}`],
+                      ['Payout units', lastOrder.units.toFixed(2)],
+                      ['Paid', `$${lastOrder.paid.toFixed(2)}`],
+                      ['Price per $1', `$${lastOrder.perUnit.toFixed(lastOrder.perUnit < 0.01 ? 4 : 2)}`],
+                      ['Payout if win', `$${lastOrder.units.toFixed(2)}${lastOrder.paid > 0 ? ` (×${(lastOrder.units / lastOrder.paid).toFixed(1)})` : ''}`],
+                      ['Odds at entry', `${(lastOrder.odds * 100).toFixed(1)}%`],
+                    ] as const).map(([k, v]) => (
+                      <div key={k} className="flex items-center justify-between" style={{ ...FONT, fontSize: '12px' }}>
+                        <span className="text-ice-faint">{k}</span><span className="text-ice-text">{v}</span>
+                      </div>
+                    ))}
+                    <div className="text-ice-faint pt-1" style={{ ...FONT, fontSize: '11px' }}>It appears under Your Positions below; you can sell it back until trading closes.</div>
+                  </div>
+                )}
+
+                {/* Payout summary (shows a $10 preview until an amount is entered) */}
+                {step !== 'success' && resolvedQty > 0 && cost && (
                   <div className="bg-ice-surface2 border border-ice-line/[0.06] rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-ice-faint" style={{ ...FONT, fontSize: '12px' }}>
-                        Payout if Win
+                        {isPreview ? 'Payout if Win (for $10)' : 'Payout if Win'}
                         <InfoTip text="Total USDC you receive if the settlement price lands inside your range. The multiplier shows your return vs. cost." />
                       </span>
                       <span className="text-ice-up font-medium" style={{ ...FONT, fontSize: '13px' }}>
@@ -915,7 +970,7 @@ export function OptionsTradePage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-ice-faint" style={{ ...FONT, fontSize: '12px' }}>
-                        Est. Cost
+                        {isPreview ? 'Est. Cost (preview)' : 'Est. Cost'}
                         <InfoTip text="Actual cost calculated by the smart contract. May differ slightly from your input due to CLMSR pricing dynamics." />
                       </span>
                       <span className="text-ice-text" style={{ ...FONT, fontSize: '13px' }}>
@@ -941,11 +996,13 @@ export function OptionsTradePage() {
               {/* Action button */}
               <div className="p-5 pt-0">
                 <button
-                  onClick={handleOpenClick}
-                  disabled={isButtonDisabled()}
+                  onClick={step === 'success' ? () => { reset(); setSpendInput(''); } : handleOpenClick}
+                  disabled={step === 'success' ? false : isButtonDisabled()}
                   className={cn(
                     'w-full py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2.5',
-                    hasInsufficientBalance
+                    step === 'success'
+                      ? 'bg-ice-surface2 text-ice-text hover:bg-ice-line/[0.1]'
+                      : hasInsufficientBalance
                       ? 'bg-ice-down/10 text-ice-down cursor-not-allowed'
                       : isButtonDisabled()
                         ? 'bg-ice-surface2 text-ice-faint cursor-not-allowed'

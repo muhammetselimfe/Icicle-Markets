@@ -54,8 +54,17 @@ export const CORE_ABI = [
       { name: 'dynSigmaMinWad', type: 'uint256' },
       { name: 'dynSigmaMaxWad', type: 'uint256' },
       { name: 'dynFloorWad', type: 'uint256' },
+      // v2.1 fields (appended)
+      { name: 'dynVersion', type: 'uint8' },
+      { name: 'tradingHalted', type: 'bool' },
+      { name: 'haltedAt', type: 'uint64' },
     ],
   },
+  // v2.1 trade guards (read-only for the UI)
+  { name: 'tradeMaxStaleness', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint64' }] },
+  { name: 'maxPriceJumpBps', type: 'function', stateMutability: 'view', inputs: [], outputs: [{ name: '', type: 'uint64' }] },
+  { name: 'MarketTradingHalted', type: 'event', inputs: [{ name: 'marketId', type: 'uint256', indexed: true }, { name: 'oldTick', type: 'int256', indexed: false }, { name: 'newTick', type: 'int256', indexed: false }] },
+  { name: 'MarketTradingResumed', type: 'event', inputs: [{ name: 'marketId', type: 'uint256', indexed: true }, { name: 'by', type: 'address', indexed: true }] },
   // Delegatecall reads — marked view for frontend
   {
     name: 'getMarketState',
@@ -188,6 +197,12 @@ export const CORE_ABI = [
   { name: 'PayoutAlreadyClaimed', type: 'error', inputs: [] },
   { name: 'NoPayout', type: 'error', inputs: [] },
   { name: 'InsufficientFreeBalance', type: 'error', inputs: [{ name: 'requested', type: 'uint256' }, { name: 'available', type: 'uint256' }] },
+  // v2 / v2.1 dynamic-pricing errors
+  { name: 'BinExposureCapExceeded', type: 'error', inputs: [{ name: 'marketId', type: 'uint256' }, { name: 'bin', type: 'uint32' }, { name: 'attempted', type: 'uint256' }, { name: 'cap', type: 'uint128' }] },
+  { name: 'OracleStaleForTrade', type: 'error', inputs: [{ name: 'ageSeconds', type: 'uint256' }, { name: 'maxAgeSeconds', type: 'uint256' }] },
+  { name: 'OracleNotInitializedForTrade', type: 'error', inputs: [] },
+  { name: 'TradingHalted', type: 'error', inputs: [{ name: 'marketId', type: 'uint256' }] },
+  { name: 'MarketNotDynamic', type: 'error', inputs: [{ name: 'marketId', type: 'uint256' }] },
 ] as const;
 
 export const POSITION_ABI = [

@@ -28,7 +28,8 @@ export function getMarketStateLabel(state: number, settled?: boolean): string {
       return 'Processing';
     case MarketState.FinalizedPrimary:
     case MarketState.FinalizedSecondary:
-      return settled ? 'Settled' : 'Expired';
+      // Past the settlement windows but not finalized on-chain yet (operator finalize pending)
+      return settled ? 'Settled' : 'Finalizing';
     case MarketState.FailedPendingManual:
       return 'Failed';
     default:

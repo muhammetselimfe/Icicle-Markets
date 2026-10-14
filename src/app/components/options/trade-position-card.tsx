@@ -87,7 +87,18 @@ export function PositionCard({ position: p, tickDivisor = 1 }: { position: Posit
   const isBusy = step === 'closing' || step === 'claiming' || isSwitching;
   const qty = Number(p.quantity) / 1e6;
 
-  const pnlColor = pnl !== null ? (pnl >= 0 ? '#4dff88' : '#ff4d4d') : undefined;
+  // Open position: the headline is what it pays if it WINS (quantity x $1). The sell-back
+  // value is secondary — selling early walks the price back down, so large positions in a
+  // thin market quote far below their payout; that is slippage, not a loss on the bet.
+  const isOpen = canClose;
+  const payoutIfWin = Number(p.quantity) / 1e6;
+  const costUsd = Number(p.costBasis) / 1e6;
+  const winPnl = hasCostBasis ? payoutIfWin - costUsd : null;
+  const winPct = hasCostBasis && costUsd > 0 ? (payoutIfWin / costUsd - 1) * 100 : null;
+  const sellPnl = hasCostBasis ? Number(p.currentValue) / 1e6 - costUsd : null;
+  const sellPct = hasCostBasis && costUsd > 0 ? (Number(p.currentValue) / 1e6 / costUsd - 1) * 100 : null;
+  const headlinePnl = isOpen ? winPnl : pnl;
+  const pnlColor = headlinePnl !== null ? (headlinePnl >= 0 ? '#4dff88' : '#ff4d4d') : undefined;
   const valueUsd = Number(effectiveValue) / 1e6;
 
   return (
@@ -111,9 +122,11 @@ export function PositionCard({ position: p, tickDivisor = 1 }: { position: Posit
         {/* Row 2: Value + Cost in two columns */}
         <div className="flex items-baseline justify-between mb-3">
           <div>
-            <div className="text-ice-faint" style={{ ...FONT, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Value</div>
+            <div className="text-ice-faint" style={{ ...FONT, fontSize: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              {isOpen ? 'Payout if wins' : canClaim ? 'Payout' : 'Value'}
+            </div>
             <span className="text-ice-text tabular-nums font-semibold" style={{ ...FONT, fontSize: '18px' }}>
-              {formatUsdc(effectiveValue)}
+              {isOpen ? formatUsdc(p.quantity) : formatUsdc(effectiveValue)}
             </span>
           </div>
           <div className="text-right">
@@ -124,8 +137,26 @@ export function PositionCard({ position: p, tickDivisor = 1 }: { position: Posit
           </div>
         </div>
 
-        {/* Row 3: P&L highlight strip */}
-        {pnl !== null && (
+        {/* Row 3 (open positions): if-wins vs sell-now, side by side */}
+        {isOpen && winPnl !== null && sellPnl !== null && (
+          <div className="rounded-lg mb-3 overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.03)' }}>
+            <div className="flex items-center justify-between px-3 py-1.5">
+              <span className="text-ice-muted" style={{ ...FONT, fontSize: '11px' }}>If it wins</span>
+              <span className="tabular-nums font-medium" style={{ ...FONT, fontSize: '12px', color: winPnl >= 0 ? '#4dff88' : '#ff4d4d' }}>
+                {winPnl >= 0 ? '+' : ''}${winPnl.toFixed(2)}{winPct !== null && ` (${winPct >= 0 ? '+' : ''}${winPct.toFixed(1)}%)`}
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 border-t border-ice-line/[0.06]" title="Selling before settlement walks the price back down. Large positions in a thin market quote far below their payout when sold early — that is slippage, not the outcome of the bet.">
+              <span className="text-ice-faint" style={{ ...FONT, fontSize: '11px' }}>Sell now · {formatUsdc(p.currentValue)}</span>
+              <span className="tabular-nums" style={{ ...FONT, fontSize: '11px', color: sellPnl >= 0 ? '#4dff88' : '#ff4d4d', opacity: 0.85 }}>
+                {sellPnl >= 0 ? '+' : ''}${sellPnl.toFixed(2)}{sellPct !== null && ` (${sellPct >= 0 ? '+' : ''}${sellPct.toFixed(1)}%)`}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Row 3 (settled): realised P&L strip */}
+        {!isOpen && pnl !== null && (
           <div
             className="flex items-center justify-between px-3 py-2 rounded-lg mb-3"
             style={{ backgroundColor: pnl >= 0 ? 'rgba(77,255,136,0.06)' : 'rgba(255,77,77,0.06)' }}

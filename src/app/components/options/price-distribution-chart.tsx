@@ -13,6 +13,8 @@ export function PriceDistributionChart({
   numBins,
   priceDecimals = 2,
   timeframeMinutes = 1440,
+  windowStart,
+  windowEnd,
   onRangeChange,
 }: {
   bins: { tick: bigint; price: number; probability: number }[];
@@ -26,6 +28,9 @@ export function PriceDistributionChart({
   numBins: number;
   priceDecimals?: number;
   timeframeMinutes?: number;
+  /** Trading window (ms) — shaded on the time axis when it overlaps the view */
+  windowStart?: number;
+  windowEnd?: number;
   onRangeChange: (newMin: number, newMax: number) => void;
 }) {
   const fmtPrice = (p: number) => priceDecimals === 0 ? `$${Math.round(p).toLocaleString()}` : `$${p.toFixed(priceDecimals)}`;
@@ -54,6 +59,12 @@ export function PriceDistributionChart({
   const padR = 12, padT = 8, padB = 28;
   const plotW = svgW - padL - padR;
   const plotH = svgH - padT - padB;
+  // The implied-odds ladder gets its own lane on the right, aligned to the price axis,
+  // so bars are never mistaken for price levels.
+  const ladderW = Math.max(72, Math.min(120, Math.round(plotW * 0.16)));
+  const laneGap = 14;
+  const chartW = plotW - ladderW - laneGap;
+  const ladderX = padL + chartW + laneGap;
 
   // Auto-zoom: focus on the range that matters (current price, selected range, active bins)
   // Instead of showing full $7-$11, zoom to where the action is
@@ -125,8 +136,8 @@ export function PriceDistributionChart({
   const tMax = hasData ? chartData[chartData.length - 1].time : Date.now();
   const tRange = tMax - tMin || 1;
   const toX = useCallback(
-    (t: number) => padL + ((t - tMin) / tRange) * plotW,
-    [padL, tMin, tRange, plotW],
+    (t: number) => padL + ((t - tMin) / tRange) * chartW,
+    [padL, tMin, tRange, chartW],
   );
 
   // Drag handlers
@@ -158,10 +169,10 @@ export function PriceDistributionChart({
         // Find hovered bin
         const price = fromY(svgPt.y);
         const idx = bins.findIndex((b) => price >= b.price && price < b.price + tickSpacing);
-        setHoverBin(idx >= 0 && svgPt.x >= padL ? idx : null);
+        setHoverBin(idx >= 0 && svgPt.x >= ladderX - laneGap / 2 ? idx : null);
 
-        // Find nearest chart data point by X position
-        if (chartData.length > 0 && svgPt.x >= padL && svgPt.x <= padL + plotW) {
+        // Find nearest chart data point by X position (chart lane only)
+        if (chartData.length > 0 && svgPt.x >= padL && svgPt.x <= padL + chartW) {
           let closest = 0;
           let closestDist = Infinity;
           for (let i = 0; i < chartData.length; i++) {
@@ -175,7 +186,7 @@ export function PriceDistributionChart({
         }
       }
     },
-    [dragging, clientToSvg, fromY, snapToTick, selectedMin, selectedMax, tickSpacing, onRangeChange, bins, padL, chartData, plotW, toX],
+    [dragging, clientToSvg, fromY, snapToTick, selectedMin, selectedMax, tickSpacing, onRangeChange, bins, padL, chartData, chartW, ladderX, laneGap, toX],
   );
 
   const handlePointerLeave = useCallback(() => { setDragging(null); setHoverBin(null); setHoverChartIdx(null); }, []);
@@ -216,7 +227,7 @@ export function PriceDistributionChart({
   const handleBarW = 50;
   const handleBarH = 6;
   const handleHitH = 24;
-  const handleCx = padL + plotW * 0.5;
+  const handleCx = padL + chartW * 0.5;
 
   const clipId = `${uid}-clip`;
   const gradId = `${uid}-priceFill`;
@@ -226,21 +237,21 @@ export function PriceDistributionChart({
     if (!hasData) return '';
     return chartData
       .map((d, i) => {
-        const x = Math.max(padL, Math.min(padL + plotW, toX(d.time)));
+        const x = Math.max(padL, Math.min(padL + chartW, toX(d.time)));
         const y = Math.max(padT, Math.min(padT + plotH, toY(d.price)));
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
       })
       .join('');
-  }, [chartData, hasData, padL, padT, plotW, plotH, toX, toY]);
+  }, [chartData, hasData, padL, padT, chartW, plotH, toX, toY]);
 
   // Area fill path (closed shape under the price line)
   const priceAreaPath = useMemo(() => {
     if (!hasData || !pricePath) return '';
-    const firstX = Math.max(padL, Math.min(padL + plotW, toX(chartData[0].time)));
-    const lastX = Math.max(padL, Math.min(padL + plotW, toX(chartData[chartData.length - 1].time)));
+    const firstX = Math.max(padL, Math.min(padL + chartW, toX(chartData[0].time)));
+    const lastX = Math.max(padL, Math.min(padL + chartW, toX(chartData[chartData.length - 1].time)));
     const bottomY = padT + plotH;
     return `${pricePath}L${lastX.toFixed(1)},${bottomY.toFixed(1)}L${firstX.toFixed(1)},${bottomY.toFixed(1)}Z`;
-  }, [pricePath, hasData, chartData, padL, plotW, plotH, padT, toX]);
+  }, [pricePath, hasData, chartData, padL, chartW, plotH, padT, toX]);
 
   // Time axis labels
   const timeLabels = useMemo(() => {
@@ -308,19 +319,27 @@ export function PriceDistributionChart({
             const ratio = isFlat && probSpread > 0
               ? 0.15 + 0.7 * ((b.probability - minProb) / probSpread)
               : b.probability / maxProb;
-            const barW = Math.max(ratio * plotW * 0.85, 2);
+            const barW = Math.max(ratio * (ladderW - 30), 2);
+            const pct = b.probability * 100;
             return (
-              <rect
-                key={b.price}
-                x={padL}
-                y={y}
-                width={barW}
-                height={Math.max(h, 1)}
-                fill={isSel ? 'var(--ice-accent)' : 'var(--chart-bar)'}
-                opacity={isHov ? 0.9 : isSel ? 0.5 + 0.4 * ratio : 0.2 + 0.5 * ratio}
-                rx={2}
-                style={{ transition: 'width 300ms ease, opacity 200ms ease' }}
-              />
+              <g key={b.price}>
+                <rect
+                  x={ladderX}
+                  y={y}
+                  width={barW}
+                  height={Math.max(h, 1)}
+                  fill={isSel ? 'var(--ice-accent)' : 'var(--chart-bar)'}
+                  opacity={isHov ? 0.95 : isSel ? 0.55 + 0.4 * ratio : 0.25 + 0.5 * ratio}
+                  rx={2}
+                  style={{ transition: 'width 300ms ease, opacity 200ms ease' }}
+                />
+                {(isSel || isHov) && h >= 9 && (
+                  <text x={ladderX + barW + 4} y={y + h / 2 + 0.5} dominantBaseline="middle"
+                    fill={isSel ? 'var(--ice-accent)' : 'var(--chart-axis)'} fontSize={9} fontWeight={600} fontFamily="Inter, sans-serif">
+                    {pct >= 10 ? pct.toFixed(0) : pct >= 1 ? pct.toFixed(1) : pct.toFixed(2)}%
+                  </text>
+                )}
+              </g>
             );
           })}
 
@@ -353,10 +372,27 @@ export function PriceDistributionChart({
 
           {/* Current price dashed reference line */}
           <line
-            x1={padL} y1={curY} x2={padL + plotW} y2={curY}
+            x1={padL} y1={curY} x2={padL + chartW} y2={curY}
             stroke="#ef4444" strokeWidth={0.75} strokeDasharray="4,3" opacity={0.4}
           />
+
+          {/* Trading window shading (this market's life on the time axis) */}
+          {hasData && windowStart !== undefined && windowEnd !== undefined && windowEnd > tMin && windowStart < tMax && (() => {
+            const x0 = Math.max(padL, toX(Math.max(windowStart, tMin)));
+            const x1 = Math.min(padL + chartW, toX(Math.min(windowEnd, tMax)));
+            return (
+              <g>
+                <rect x={x0} y={padT} width={Math.max(x1 - x0, 1)} height={plotH} fill="var(--ice-accent)" opacity={0.05} />
+                <line x1={x0} y1={padT} x2={x0} y2={padT + plotH} stroke="var(--ice-accent)" strokeWidth={1} strokeDasharray="2,3" opacity={0.5} />
+                {windowEnd <= tMax && <line x1={x1} y1={padT} x2={x1} y2={padT + plotH} stroke="var(--ice-accent)" strokeWidth={1} strokeDasharray="2,3" opacity={0.5} />}
+              </g>
+            );
+          })()}
+
+          {/* Ladder lane separator + header */}
+          <line x1={ladderX - laneGap / 2} y1={padT} x2={ladderX - laneGap / 2} y2={padT + plotH} stroke="var(--chart-grid)" strokeWidth={0.75} opacity={0.6} />
         </g>
+        <text x={ladderX} y={padT + plotH + 16} fill="var(--chart-axis)" fontSize={10} fontFamily="Inter, sans-serif" letterSpacing="0.05em">IMPLIED ODDS</text>
 
         {/* Time axis labels and vertical gridlines */}
         {timeLabels.map((tl, i) => (
@@ -385,8 +421,8 @@ export function PriceDistributionChart({
 
         {/* Current price pill */}
         <g>
-          <rect x={padL + plotW - 64} y={curY - 10} width={52} height={20} rx={4} fill="#ef4444" />
-          <text x={padL + plotW - 38} y={curY + 1} textAnchor="middle" dominantBaseline="middle"
+          <rect x={padL + chartW - 64} y={curY - 10} width={52} height={20} rx={4} fill="#ef4444" />
+          <text x={padL + chartW - 38} y={curY + 1} textAnchor="middle" dominantBaseline="middle"
             fill="white" fontSize={10} fontWeight={600} fontFamily="Inter, sans-serif">
             {fmtPrice(currentPrice)}
           </text>
@@ -394,8 +430,8 @@ export function PriceDistributionChart({
 
         {/* Selected max price label */}
         <g>
-          <rect x={padL + plotW - 64} y={selMaxY - 10} width={52} height={20} rx={10} fill="var(--ice-accent2)" />
-          <text x={padL + plotW - 38} y={selMaxY + 1} textAnchor="middle" dominantBaseline="middle"
+          <rect x={padL + chartW - 64} y={selMaxY - 10} width={52} height={20} rx={10} fill="var(--ice-accent2)" />
+          <text x={padL + chartW - 38} y={selMaxY + 1} textAnchor="middle" dominantBaseline="middle"
             fill="white" fontSize={10} fontWeight={600} fontFamily="Inter, sans-serif">
             {fmtPrice(selectedMax)}
           </text>
@@ -403,8 +439,8 @@ export function PriceDistributionChart({
 
         {/* Selected min price label */}
         <g>
-          <rect x={padL + plotW - 64} y={selMinY - 10} width={52} height={20} rx={10} fill="var(--ice-accent2)" />
-          <text x={padL + plotW - 38} y={selMinY + 1} textAnchor="middle" dominantBaseline="middle"
+          <rect x={padL + chartW - 64} y={selMinY - 10} width={52} height={20} rx={10} fill="var(--ice-accent2)" />
+          <text x={padL + chartW - 38} y={selMinY + 1} textAnchor="middle" dominantBaseline="middle"
             fill="white" fontSize={10} fontWeight={600} fontFamily="Inter, sans-serif">
             {fmtPrice(selectedMin)}
           </text>
@@ -432,7 +468,7 @@ export function PriceDistributionChart({
 
           const tipW = 170, tipH = binProb !== null ? 72 : 54;
           let tx = hx + 12;
-          if (tx + tipW > padL + plotW) tx = hx - tipW - 12;
+          if (tx + tipW > padL + chartW) tx = hx - tipW - 12;
           let ty = hy - tipH / 2;
           if (ty < padT) ty = padT;
           if (ty + tipH > padT + plotH) ty = padT + plotH - tipH;
@@ -442,7 +478,7 @@ export function PriceDistributionChart({
               {/* Vertical crosshair */}
               <line x1={hx} y1={padT} x2={hx} y2={padT + plotH} stroke="var(--chart-axis)" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.6} />
               {/* Horizontal crosshair */}
-              <line x1={padL} y1={hy} x2={padL + plotW} y2={hy} stroke="var(--chart-axis)" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.6} />
+              <line x1={padL} y1={hy} x2={padL + chartW} y2={hy} stroke="var(--chart-axis)" strokeWidth={0.5} strokeDasharray="3,3" opacity={0.6} />
               {/* Dot on the price line */}
               <circle cx={hx} cy={hy} r={4} fill="#ff6b6b" stroke="var(--ice-surface)" strokeWidth={2} />
               {/* Tooltip card */}
@@ -462,7 +498,7 @@ export function PriceDistributionChart({
                   <circle cx={tx + 14} cy={ty + 54} r={3.5} fill="var(--ice-accent)" />
                   <text x={tx + 22} y={ty + 57} fill="#94a3b8" fontSize={11} fontFamily="Inter, sans-serif">Prob:</text>
                   <text x={tx + tipW - 10} y={ty + 57} textAnchor="end" fill="#e2e8f0" fontSize={12} fontWeight={600} fontFamily="Inter, sans-serif">
-                    {binProb.toFixed(2)}%
+                    {binProb.toFixed(2)}% odds
                   </text>
                 </>
               )}
@@ -474,11 +510,9 @@ export function PriceDistributionChart({
         {!dragging && hoverChartIdx === null && hoveredBin && (() => {
           const by = toY(hoveredBin.price + tickSpacing / 2);
           const pct = (hoveredBin.probability * 100);
-          const tipW = 100, tipH = 32;
-          const ratio = hoveredBin.probability / maxProb;
-          const barEndX = padL + Math.max(ratio * plotW * 0.85, 1.5);
-          let tx = barEndX + 8;
-          if (tx + tipW > padL + plotW) tx = barEndX - tipW - 8;
+          const tipW = 128, tipH = 44;
+          let tx = ladderX - laneGap - tipW - 6; // sits in the chart lane, left of the ladder
+          if (tx < padL) tx = padL;
           let ty = by - tipH / 2;
           if (ty < padT) ty = padT;
           if (ty + tipH > padT + plotH) ty = padT + plotH - tipH;
@@ -489,7 +523,10 @@ export function PriceDistributionChart({
                 {fmtPrice(hoveredBin.price)} – {fmtPrice(hoveredBin.price + tickSpacing)}
               </text>
               <text x={tx + tipW / 2} y={ty + 25} textAnchor="middle" fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">
-                {pct.toFixed(2)}% probability
+                {pct.toFixed(2)}% implied odds
+              </text>
+              <text x={tx + tipW / 2} y={ty + 37} textAnchor="middle" fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">
+                ${hoveredBin.probability.toFixed(hoveredBin.probability < 0.01 ? 4 : 2)} per $1 payout
               </text>
             </g>
           );

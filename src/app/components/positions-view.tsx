@@ -417,7 +417,7 @@ function PositionCard({ position: p, market }: { position: PositionDisplay; mark
             </span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-ice-faint" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Shares</span>
+            <span className="text-ice-faint" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>Payout units</span>
             <span className="text-ice-muted font-mono" style={{ fontSize: '13px' }}>
               {(Number(p.quantity) / 1e6).toFixed(2)}
             </span>

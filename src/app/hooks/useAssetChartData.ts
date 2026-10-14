@@ -1,16 +1,20 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import {
+  fetchRedstonePriceHistory,
+  historyRangeForMinutes,
+  sliceAndDownsample,
+  type ChartPoint,
+} from '@/app/services/redstone';
 
-export interface ChartPoint {
-  time: number;
-  price: number;
-}
-
-const REDSTONE_API = 'https://api.redstone.finance';
+export type { ChartPoint };
 
 /**
- * Fetch historical price data for the chart via Redstone history API.
- * All assets use Redstone as the single data source for consistency
- * with the settlement oracle.
+ * Historical price data for the options chart.
+ *
+ * All assets use RedStone as the single data source so the chart matches the
+ * settlement oracle. One request per (feed, backend range) is shared across
+ * the 15m / 1H / 4H / 1D tabs; the timeframe slice happens client-side.
  */
 export function useAssetChartData(
   _coingeckoId: string | null,
@@ -18,49 +22,17 @@ export function useAssetChartData(
   redstoneFeedId?: string,
 ) {
   const enabled = !!redstoneFeedId;
+  const rangeDays = historyRangeForMinutes(minutes);
+
+  const select = useCallback(
+    (points: ChartPoint[]) => sliceAndDownsample(points, minutes),
+    [minutes],
+  );
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['assetChart-redstone', redstoneFeedId, minutes],
-    queryFn: async (): Promise<ChartPoint[]> => {
-      if (!redstoneFeedId) return [];
-
-      // Redstone returns ~1 point per minute. Fetch exactly `minutes` points.
-      const pointsNeeded = minutes;
-      const batchSize = 1000;
-      const allPoints: ChartPoint[] = [];
-
-      for (let offset = 0; offset < pointsNeeded; offset += batchSize) {
-        const limit = Math.min(batchSize, pointsNeeded - offset);
-        const url = `${REDSTONE_API}/prices?symbol=${redstoneFeedId}&provider=redstone&limit=${limit}&offset=${offset}`;
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (!res.ok) break;
-        const data = await res.json();
-        if (!Array.isArray(data) || data.length === 0) break;
-        for (const d of data) {
-          allPoints.push({ time: d.timestamp, price: d.value });
-        }
-        if (data.length < limit) break; // no more data
-      }
-
-      // Redstone returns newest first — reverse to chronological order
-      allPoints.reverse();
-
-      // Downsample to ~200 points for performance
-      if (allPoints.length > 200) {
-        const step = Math.floor(allPoints.length / 200);
-        const sampled: ChartPoint[] = [];
-        for (let i = 0; i < allPoints.length; i += step) {
-          sampled.push(allPoints[i]);
-        }
-        // Always include last point
-        if (sampled[sampled.length - 1] !== allPoints[allPoints.length - 1]) {
-          sampled.push(allPoints[allPoints.length - 1]);
-        }
-        return sampled;
-      }
-
-      return allPoints;
-    },
+    queryKey: ['assetChart-redstone', redstoneFeedId, rangeDays],
+    queryFn: () => fetchRedstonePriceHistory(redstoneFeedId!, rangeDays),
+    select,
     enabled,
     refetchInterval: 60_000,
     staleTime: 30_000,

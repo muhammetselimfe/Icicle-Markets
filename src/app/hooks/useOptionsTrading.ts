@@ -1,9 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { encodeFunctionData } from 'viem';
 import { CHAIN_IDS, OPTIONS_CONTRACTS } from '@/app/config/wagmi';
 import { CORE_ABI, ERC20_ABI } from '@/app/config/options-abis';
+import { fetchRedstonePayload, withPayload } from '@/app/services/redstonePayload';
 import type { TradeStep } from '@/app/types/options';
+
+/** Safety margin over the fresh quote, on top of the user's slippage (bps). */
+const VIEW_EXECUTE_BUFFER_BPS = 200n;
 
 export function useOptionsTrading() {
   const { address } = useAccount();
@@ -62,6 +67,23 @@ export function useOptionsTrading() {
     [address, publicClient, walletClient],
   );
 
+  /**
+   * Send a Core trade with the signed RedStone price appended to the calldata (v2.1):
+   * the Core refreshes the market's trade oracle atomically before pricing, so the
+   * trade never fails the staleness gate and prices against a price seconds old.
+   * Falls back to a plain call if the payload cannot be fetched.
+   */
+  const sendTradeTx = useCallback(
+    async (functionName: 'openPosition' | 'closePosition', args: readonly unknown[], feedId: string) => {
+      if (!address || !walletClient || !publicClient) throw new Error('Wallet not connected');
+      const base = encodeFunctionData({ abi: CORE_ABI, functionName, args } as any);
+      const data = withPayload(base, await fetchRedstonePayload(feedId));
+      const gas = await publicClient.estimateGas({ account: address, to: OPTIONS_CONTRACTS.core, data });
+      return walletClient.sendTransaction({ to: OPTIONS_CONTRACTS.core, data, gas: gas + gas / 4n });
+    },
+    [address, walletClient, publicClient],
+  );
+
   const openPosition = useCallback(
     async (params: {
       marketId: number;
@@ -69,6 +91,10 @@ export function useOptionsTrading() {
       upperTick: bigint;
       quantity: bigint;
       maxCost: bigint;
+      /** When set, the quote is refreshed right before sending and maxCost is rebuilt from it. */
+      slippageBps?: number;
+      /** RedStone feed to attach (defaults to AVAX). */
+      feedId?: string;
     }) => {
       if (!address || !walletClient || !publicClient) {
         setError('Wallet not connected');
@@ -81,53 +107,33 @@ export function useOptionsTrading() {
       setTxHash(null);
 
       try {
-        const approved = await ensureAllowance(params.maxCost);
+        // Re-quote immediately before submitting: on dynamic markets the quote decays
+        // with time (σ narrows toward settlement), so a quote that is 20–30 s old can
+        // already exceed the slippage buffer.
+        let maxCost = params.maxCost;
+        if (params.slippageBps !== undefined) {
+          const fresh = (await publicClient.readContract({
+            address: OPTIONS_CONTRACTS.core,
+            abi: CORE_ABI,
+            functionName: 'calculateOpenCost',
+            args: [BigInt(params.marketId), params.lowerTick, params.upperTick, params.quantity],
+          })) as bigint;
+          const rebuilt = (fresh * (10000n + BigInt(params.slippageBps) + VIEW_EXECUTE_BUFFER_BPS)) / 10000n;
+          if (rebuilt > maxCost) maxCost = rebuilt;
+        }
+
+        const approved = await ensureAllowance(maxCost);
         if (!approved) {
           setStep('error');
           return;
         }
 
         setStep('opening');
-        console.log('[openPosition] args:', {
-          marketId: BigInt(params.marketId).toString(),
-          lowerTick: params.lowerTick.toString(),
-          upperTick: params.upperTick.toString(),
-          quantity: params.quantity.toString(),
-          maxCost: params.maxCost.toString(),
-          types: {
-            marketId: typeof params.marketId,
-            lowerTick: typeof params.lowerTick,
-            upperTick: typeof params.upperTick,
-            quantity: typeof params.quantity,
-            maxCost: typeof params.maxCost,
-          },
-        });
-        const openGas = await publicClient.estimateContractGas({
-          address: OPTIONS_CONTRACTS.core,
-          abi: CORE_ABI,
-          functionName: 'openPosition',
-          args: [
-            BigInt(params.marketId),
-            params.lowerTick,
-            params.upperTick,
-            params.quantity,
-            params.maxCost,
-          ],
-          account: address,
-        });
-        const hash = await walletClient.writeContract({
-          address: OPTIONS_CONTRACTS.core,
-          abi: CORE_ABI,
-          functionName: 'openPosition',
-          args: [
-            BigInt(params.marketId),
-            params.lowerTick,
-            params.upperTick,
-            params.quantity,
-            params.maxCost,
-          ],
-          gas: openGas + openGas / 4n,
-        });
+        const hash = await sendTradeTx(
+          'openPosition',
+          [BigInt(params.marketId), params.lowerTick, params.upperTick, params.quantity, maxCost],
+          params.feedId ?? 'AVAX',
+        );
 
         setTxHash(hash);
         await publicClient.waitForTransactionReceipt({ hash });
@@ -148,11 +154,11 @@ export function useOptionsTrading() {
         handleTxError(err);
       }
     },
-    [address, walletClient, publicClient, ensureAllowance, invalidateOptions],
+    [address, walletClient, publicClient, ensureAllowance, invalidateOptions, sendTradeTx],
   );
 
   const closePosition = useCallback(
-    async (positionId: number, minProceeds: bigint = 0n) => {
+    async (positionId: number, minProceeds: bigint = 0n, feedId: string = 'AVAX') => {
       if (!address || !walletClient || !publicClient) {
         setError('Wallet not connected');
         setStep('error');
@@ -165,20 +171,7 @@ export function useOptionsTrading() {
 
       try {
         setStep('closing');
-        const closeGas = await publicClient.estimateContractGas({
-          address: OPTIONS_CONTRACTS.core,
-          abi: CORE_ABI,
-          functionName: 'closePosition',
-          args: [BigInt(positionId), minProceeds],
-          account: address,
-        });
-        const hash = await walletClient.writeContract({
-          address: OPTIONS_CONTRACTS.core,
-          abi: CORE_ABI,
-          functionName: 'closePosition',
-          args: [BigInt(positionId), minProceeds],
-          gas: closeGas + closeGas / 4n,
-        });
+        const hash = await sendTradeTx('closePosition', [BigInt(positionId), minProceeds], feedId);
 
         setTxHash(hash);
         await publicClient.waitForTransactionReceipt({ hash });
@@ -320,6 +313,12 @@ export function useOptionsTrading() {
       setError('Market has insufficient liquidity for this trade');
     } else if (errorName === 'FeeExceedsBase') {
       setError('Fee calculation error - try a different amount');
+    } else if (errorName === 'BinExposureCapExceeded' || msg.includes('BinExposureCapExceeded')) {
+      setError('This price range is at its exposure limit - try a smaller amount or another range');
+    } else if (errorName === 'TradingHalted' || msg.includes('TradingHalted')) {
+      setError('Trading is paused on this market after a sharp price move - try again shortly');
+    } else if (errorName === 'OracleStaleForTrade' || errorName === 'OracleNotInitializedForTrade' || msg.includes('OracleStaleForTrade') || msg.includes('OracleNotInitializedForTrade')) {
+      setError('Live price unavailable for this market right now - try again in a few seconds');
     } else if (msg.includes('execution reverted')) {
       setError('Transaction failed - try a smaller amount');
     } else {
