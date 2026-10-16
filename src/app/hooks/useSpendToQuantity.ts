@@ -10,6 +10,8 @@ interface UseSpendToQuantityOptions {
   lowerTick: bigint | null;
   upperTick: bigint | null;
   spendUsdc: string; // e.g. "100" for $100
+  /** Units the range can still take before the per-bin exposure cap (null = unknown / no cap) */
+  maxUnits?: number | null;
 }
 
 interface SpendResult {
@@ -19,6 +21,8 @@ interface SpendResult {
   cost: bigint;
   /** Maximum possible spend in USDC (human-readable) before contract overflow, or null if no cap hit */
   maxSpend: number | null;
+  /** Why the order was limited: market liquidity, or the per-bin exposure cap */
+  limitedBy: 'liquidity' | 'cap' | null;
 }
 
 /**
@@ -31,6 +35,7 @@ export function useSpendToQuantity({
   lowerTick,
   upperTick,
   spendUsdc,
+  maxUnits = null,
 }: UseSpendToQuantityOptions) {
   const publicClient = usePublicClient({ chainId: CHAIN_IDS.FUJI });
 
@@ -58,6 +63,7 @@ export function useSpendToQuantity({
       lowerTick?.toString() ?? '',
       upperTick?.toString() ?? '',
       debouncedSpend,
+      maxUnits === null ? 'nocap' : String(Math.floor(maxUnits)),
     ),
     queryFn: async (): Promise<SpendResult> => {
       if (!publicClient || !spendMicro || lowerTick === null || upperTick === null) {
@@ -103,7 +109,7 @@ export function useSpendToQuantity({
 
       if (validQty <= 0) {
         // Nothing works — return zero
-        return { quantity: 0, cost: 0n, maxSpend: null };
+        return { quantity: 0, cost: 0n, maxSpend: null, limitedBy: null };
       }
 
       // Step 2: Find overflow ceiling by doubling from validQty
@@ -171,13 +177,22 @@ export function useSpendToQuantity({
         }
       }
 
-      // Check if we hit the cap (couldn't reach target spend)
+      // Per-bin exposure cap: the contract rejects any order that pushes a bin past its cap,
+      // so clamp the quantity to the range's headroom and quote that instead.
+      if (maxUnits !== null && Number.isFinite(maxUnits) && bestQty > maxUnits) {
+        const clampQty = Math.max(0, Math.floor(maxUnits * 1e6) / 1e6 - 0.000001);
+        const c = clampQty > 0 ? await getCost(clampQty) : 0n;
+        if (c !== null) return { quantity: clampQty, cost: c, maxSpend: Number(c) / 1e6, limitedBy: 'cap' };
+      }
+
+      // Check if we hit the liquidity ceiling (couldn't reach target spend)
       const costNum = Number(bestCost);
       const capped = costNum < targetCost * 0.95; // more than 5% below target
       return {
         quantity: bestQty,
         cost: bestCost,
         maxSpend: capped ? costNum / 1e6 : null,
+        limitedBy: capped ? 'liquidity' : null,
       };
     },
     enabled,
@@ -193,6 +208,8 @@ export function useSpendToQuantity({
     cost: data?.cost ?? null,
     /** Max possible spend in USDC if contract caps out, or null */
     maxSpend: data?.maxSpend ?? null,
+    /** 'cap' when the per-bin exposure cap limited the order, 'liquidity' when the book did */
+    limitedBy: data?.limitedBy ?? null,
     loading: isFetching,
     error: error ? (error instanceof Error ? error.message : 'Failed to calculate') : null,
   };

@@ -26,6 +26,7 @@ import { useChainSwitch } from '@/app/hooks/useChainSwitch';
 import { useRedstonePrice } from '@/app/hooks/useRedstonePrice';
 import { useAssetChartData } from '@/app/hooks/useAssetChartData';
 import { useBinProbabilities } from '@/app/hooks/useBinProbabilities';
+import { useBinExposure, rangeHeadroom } from '@/app/hooks/useBinExposure';
 import { MarketState } from '@/app/types/options';
 import { generateTicks, formatTickAsPrice, formatUsdc, tickToPrice } from '@/app/utils/options';
 import { PriceDistributionChart } from '@/app/components/options/price-distribution-chart';
@@ -243,6 +244,10 @@ export function OptionsTradePage() {
     tickDivisor,
   });
 
+  // Open units per bin (the per-bin exposure cap counts units): tells the user how much a
+  // range can still take BEFORE the contract rejects the order.
+  const { exposure } = useBinExposure({ marketId, tickSpacing: market?.tickSpacing ?? 0n, enabled: !!market && !market.settled });
+
   // Countdown
   const { formatted: countdown, expired } = useCountdown(market?.tradingEnd ?? 0);
 
@@ -309,11 +314,17 @@ export function OptionsTradePage() {
   // always shows a payout and a price-impact figure for the selected range.
   const PREVIEW_SPEND = '10';
   const isPreview = !spendInput || spendInput === '0' || Number(spendInput) <= 0;
-  const { quantity: resolvedQty, cost, maxSpend, loading: costLoading, error: costError } = useSpendToQuantity({
+  const headroomUnits = useMemo(() => {
+    if (!market) return null;
+    const h = rangeHeadroom(exposure, market.perBinCap, lowerTick, upperTick, market.tickSpacing);
+    return h === null ? null : Number(h) / 1e6;
+  }, [exposure, market, lowerTick, upperTick]);
+  const { quantity: resolvedQty, cost, maxSpend, limitedBy, loading: costLoading, error: costError } = useSpendToQuantity({
     marketId: market?.marketId ?? 0,
     lowerTick,
     upperTick,
     spendUsdc: isPreview ? PREVIEW_SPEND : spendInput,
+    maxUnits: headroomUnits,
   });
 
   // maxCost = actual converged cost + slippage buffer + view/execute mismatch buffer
@@ -684,6 +695,7 @@ export function OptionsTradePage() {
                   timeframeMinutes={chartTimeframe}
                   windowStart={market.tradingStart * 1000}
                   windowEnd={market.tradingEnd * 1000}
+                  capacity={exposure && market.perBinCap > 0n ? new Map(bins.map((b) => [b.price, Number(exposure.get(b.tick.toString()) ?? 0n) / Number(market.perBinCap)])) : undefined}
                   onRangeChange={(newMin, newMax) => {
                     setLowerTick(BigInt(Math.round(newMin * tickDivisor)));
                     setUpperTick(BigInt(Math.round(newMax * tickDivisor)));
@@ -911,13 +923,21 @@ export function OptionsTradePage() {
                   </div>
                 </div>
 
-                {/* Max spend warning */}
-                {maxSpend !== null && !costLoading && (
+                {/* Order limited: by the per-bin exposure cap, or by market liquidity */}
+                {maxSpend !== null && !costLoading && !isPreview && (
                   <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                     <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                     <span className="text-amber-400" style={{ ...FONT, fontSize: '12px' }}>
-                      Max spend for this range is <strong>${maxSpend.toFixed(2)}</strong> (market liquidity limit).
+                      {limitedBy === 'cap'
+                        ? <>This range can take <strong>${maxSpend.toFixed(2)}</strong> more right now ({Math.floor(headroomUnits ?? 0).toLocaleString()} payout units; each bin is limited to {(Number(market.perBinCap) / 1e6).toLocaleString()}). Your order is sized to that.</>
+                        : <>Max spend for this range is <strong>${maxSpend.toFixed(2)}</strong> (market liquidity limit).</>}
                     </span>
+                  </div>
+                )}
+                {headroomUnits !== null && market.perBinCap > 0n && headroomUnits <= 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-ice-down/10 border border-ice-down/20 rounded-xl">
+                    <AlertTriangle className="w-4 h-4 text-ice-down shrink-0" />
+                    <span className="text-ice-down" style={{ ...FONT, fontSize: '12px' }}>A bin in this range is full (limit {(Number(market.perBinCap) / 1e6).toLocaleString()} payout units). Pick a range that avoids it.</span>
                   </div>
                 )}
 

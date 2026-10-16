@@ -15,6 +15,7 @@ export function PriceDistributionChart({
   timeframeMinutes = 1440,
   windowStart,
   windowEnd,
+  capacity,
   onRangeChange,
 }: {
   bins: { tick: bigint; price: number; probability: number }[];
@@ -31,6 +32,8 @@ export function PriceDistributionChart({
   /** Trading window (ms) — shaded on the time axis when it overlaps the view */
   windowStart?: number;
   windowEnd?: number;
+  /** bin price → fraction of the per-bin exposure cap already used (0..1) */
+  capacity?: Map<number, number>;
   onRangeChange: (newMin: number, newMax: number) => void;
 }) {
   const fmtPrice = (p: number) => priceDecimals === 0 ? `$${Math.round(p).toLocaleString()}` : `$${p.toFixed(priceDecimals)}`;
@@ -333,6 +336,10 @@ export function PriceDistributionChart({
                   rx={2}
                   style={{ transition: 'width 300ms ease, opacity 200ms ease' }}
                 />
+                {capacity && (capacity.get(b.price) ?? 0) > 0.02 && h >= 6 && (() => {
+                  const used = Math.min(1, capacity.get(b.price) ?? 0);
+                  return <rect x={ladderX} y={y + Math.max(h, 1) - 1.5} width={Math.max(used * (ladderW - 30), 1)} height={1.5} fill={used >= 0.9 ? '#fbbf24' : 'var(--chart-axis)'} opacity={used >= 0.9 ? 0.9 : 0.5} />;
+                })()}
                 {(isSel || isHov) && h >= 9 && (
                   <text x={ladderX + barW + 4} y={y + h / 2 + 0.5} dominantBaseline="middle"
                     fill={isSel ? 'var(--ice-accent)' : 'var(--chart-axis)'} fontSize={9} fontWeight={600} fontFamily="Inter, sans-serif">
@@ -523,7 +530,7 @@ export function PriceDistributionChart({
                 {fmtPrice(hoveredBin.price)} – {fmtPrice(hoveredBin.price + tickSpacing)}
               </text>
               <text x={tx + tipW / 2} y={ty + 25} textAnchor="middle" fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">
-                {pct.toFixed(2)}% implied odds
+                {pct.toFixed(2)}% implied odds{capacity && (capacity.get(hoveredBin.price) ?? 0) > 0 ? `, ${Math.round((capacity.get(hoveredBin.price) ?? 0) * 100)}% of cap used` : ''}
               </text>
               <text x={tx + tipW / 2} y={ty + 37} textAnchor="middle" fill="#94a3b8" fontSize={10} fontFamily="Inter, sans-serif">
                 ${hoveredBin.probability.toFixed(hoveredBin.probability < 0.01 ? 4 : 2)} per $1 payout

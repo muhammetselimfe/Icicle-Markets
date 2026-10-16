@@ -21,6 +21,7 @@ const F = {
   settlementTick: 15,
   settlementValue: 16,
   dynamicEnabled: 24,
+  perBinCap: 28,
   // v2.1 (appended)
   dynVersion: 36,
   tradingHalted: 37,
@@ -76,6 +77,7 @@ export function useOptionsMarkets() {
           const settlementTick = m[F.settlementTick] as bigint;
           const settlementValue = m[F.settlementValue] as bigint;
           const dynamicEnabled = Boolean(m[F.dynamicEnabled]);
+          const perBinCap = (m[F.perBinCap] as bigint | undefined) ?? 0n;
           const tradingHalted = Boolean(m[F.tradingHalted]); // undefined on pre-v2.1 cores => false
 
           const state = Number(stateRaw);
@@ -91,6 +93,7 @@ export function useOptionsMarkets() {
             isSeeded,
             dynamicEnabled,
             tradingHalted,
+            perBinCap,
             minTick,
             maxTick,
             tickSpacing,

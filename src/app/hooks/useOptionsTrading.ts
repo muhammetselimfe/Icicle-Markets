@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
-import { encodeFunctionData } from 'viem';
+import { encodeFunctionData, decodeErrorResult } from 'viem';
 import { CHAIN_IDS, OPTIONS_CONTRACTS } from '@/app/config/wagmi';
 import { CORE_ABI, ERC20_ABI } from '@/app/config/options-abis';
 import { fetchRedstonePayload, withPayload } from '@/app/services/redstonePayload';
@@ -73,6 +73,7 @@ export function useOptionsTrading() {
    * trade never fails the staleness gate and prices against a price seconds old.
    * Falls back to a plain call if the payload cannot be fetched.
    */
+  const lastQtyRef = useRef<bigint | null>(null);
   const sendTradeTx = useCallback(
     async (functionName: 'openPosition' | 'closePosition', args: readonly unknown[], feedId: string) => {
       if (!address || !walletClient || !publicClient) throw new Error('Wallet not connected');
@@ -129,6 +130,7 @@ export function useOptionsTrading() {
         }
 
         setStep('opening');
+        lastQtyRef.current = params.quantity;
         const hash = await sendTradeTx(
           'openPosition',
           [BigInt(params.marketId), params.lowerTick, params.upperTick, params.quantity, maxCost],
@@ -271,7 +273,28 @@ export function useOptionsTrading() {
 
     // Extract decoded error name from viem's error chain
     // viem includes "errorName" in ContractFunctionRevertedError
-    const errorName = extractErrorName(err);
+    let errorName = extractErrorName(err);
+    let errorArgs: readonly unknown[] | undefined;
+    if (!errorName) {
+      // Raw-calldata sends (payload-attached trades) surface the revert as hex data; decode it ourselves
+      const data = findRevertData(err);
+      if (data) {
+        try {
+          const decoded = decodeErrorResult({ abi: CORE_ABI, data });
+          errorName = decoded.errorName;
+          errorArgs = decoded.args as readonly unknown[] | undefined;
+        } catch { /* not one of ours */ }
+      }
+    }
+    if (errorName === 'BinExposureCapExceeded' && errorArgs && lastQtyRef.current !== null) {
+      // args: marketId, bin, attempted, cap — headroom = cap - (attempted - quantity)
+      const attempted = BigInt(errorArgs[2] as bigint), cap = BigInt(errorArgs[3] as bigint);
+      const headroom = cap - (attempted - lastQtyRef.current);
+      const units = Number(headroom > 0n ? headroom : 0n) / 1e6;
+      setError(`One bin in this range can only take ${units.toFixed(0)} more payout units (limit ${(Number(cap) / 1e6).toLocaleString()} per bin). Try a smaller amount, or a range that avoids the full bin.`);
+      setStep('error');
+      return;
+    }
 
     if (msg.includes('User rejected') || msg.includes('user rejected')) {
       setError('Transaction rejected');
@@ -325,6 +348,15 @@ export function useOptionsTrading() {
       setError(msg.slice(0, 100).split('\n')[0]);
     }
     setStep('error');
+  }
+
+  /** Walk viem's error chain for raw revert data (0x… custom-error selector + args) */
+  function findRevertData(err: unknown, depth = 0): `0x${string}` | null {
+    if (!err || typeof err !== 'object' || depth > 6) return null;
+    const e = err as Record<string, unknown>;
+    const candidates = [e.data, (e.data as Record<string, unknown> | undefined)?.data, e.raw];
+    for (const c of candidates) if (typeof c === 'string' && /^0x[0-9a-fA-F]{8,}$/.test(c) && c !== '0x') return c as `0x${string}`;
+    return findRevertData(e.cause, depth + 1);
   }
 
   /** Walk viem's error chain to find the decoded error name */

@@ -206,6 +206,7 @@ export const CORE_ABI = [
 ] as const;
 
 export const POSITION_ABI = [
+  { name: 'getMarketPositions', type: 'function', stateMutability: 'view', inputs: [{ name: 'marketId', type: 'uint256' }], outputs: [{ name: 'tokenIds', type: 'uint256[]' }] },
   {
     name: 'getPosition',
     type: 'function',

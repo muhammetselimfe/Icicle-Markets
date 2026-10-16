@@ -17,6 +17,8 @@ export interface MarketDisplay {
   dynamicEnabled: boolean;
   /** v2.1 price-jump circuit breaker tripped: trades revert until resumed */
   tradingHalted: boolean;
+  /** Max open payout units per bin (6-dec); 0 = no cap */
+  perBinCap: bigint;
   minTick: bigint;
   maxTick: bigint;
   tickSpacing: bigint;
