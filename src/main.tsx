@@ -6,7 +6,8 @@ import { ThemeProvider, useTheme } from 'next-themes';
 import { PrivyProvider } from '@privy-io/react-auth';
 import { WagmiProvider } from '@privy-io/wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { config } from '@/app/config/wagmi';
+import { avalanche } from 'wagmi/chains';
+import { config, fujiChain } from '@/app/config/wagmi';
 import App from "./app/App.tsx";
 import "./styles/index.css";
 
@@ -36,6 +37,9 @@ function Root() {
         },
         loginMethods: ['wallet', 'email', 'google', 'twitter', 'github'],
         embeddedWallets: { createOnLogin: 'users-without-wallets' },
+        // Fuji with the publicnode RPC first: the official endpoint rate-limits per IP.
+        supportedChains: [avalanche, fujiChain],
+        defaultChain: fujiChain,
       }}
     >
       <QueryClientProvider client={queryClient}>

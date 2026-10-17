@@ -26,6 +26,7 @@ import { useChainSwitch } from '@/app/hooks/useChainSwitch';
 import { useRedstonePrice } from '@/app/hooks/useRedstonePrice';
 import { useAssetChartData } from '@/app/hooks/useAssetChartData';
 import { useBinProbabilities } from '@/app/hooks/useBinProbabilities';
+import { useSyncedOracle } from '@/app/hooks/useSyncedOracle';
 import { useBinExposure, rangeHeadroom } from '@/app/hooks/useBinExposure';
 import { MarketState } from '@/app/types/options';
 import { generateTicks, formatTickAsPrice, formatUsdc, tickToPrice } from '@/app/utils/options';
@@ -246,6 +247,19 @@ export function OptionsTradePage() {
 
   // Open units per bin (the per-bin exposure cap counts units): tells the user how much a
   // range can still take BEFORE the contract rejects the order.
+  // The contract prices against its last SYNCED oracle tick, not the live price shown above.
+  // Between refreshes the two can sit in different bins; say so instead of showing odds that
+  // look wrong for the "current" bin.
+  const { syncedTick, syncedTs } = useSyncedOracle({ marketId, enabled: !!market && !market.settled });
+  const syncedPrice = syncedTick !== null && market ? Number(syncedTick) / market.tickDivisor : null;
+  const syncedAgeSec = syncedTs > 0 ? Math.max(0, Math.round(nowMs / 1000 - syncedTs)) : null;
+  const syncGap = (() => {
+    if (!market || syncedTick === null || syncedTs === 0 || currentPrice <= 0) return false;
+    const ts = market.tickSpacing;
+    const liveBin = (BigInt(Math.round(currentPrice * market.tickDivisor)) - market.minTick) / ts;
+    const syncedBin = (syncedTick - market.minTick) / ts;
+    return liveBin !== syncedBin;
+  })();
   const { exposure } = useBinExposure({ marketId, tickSpacing: market?.tickSpacing ?? 0n, enabled: !!market && !market.settled });
 
   // Countdown
@@ -599,6 +613,11 @@ export function OptionsTradePage() {
                   market.priceDecimals === 0 ? `$${Math.round(mostLikelyPrice).toLocaleString()}` : `$${mostLikelyPrice.toFixed(2)}`
                 )}
               </div>
+              {!market.settled && syncedPrice !== null && syncedAgeSec !== null && (
+                <div className={cn('mt-1', syncGap ? 'text-amber-400' : 'text-ice-faint')} style={{ ...FONT, fontSize: '11px' }}>
+                  Market synced to {market.priceDecimals === 0 ? `$${Math.round(syncedPrice).toLocaleString()}` : `$${syncedPrice.toFixed(2)}`} · {syncedAgeSec < 60 ? `${syncedAgeSec}s ago` : `${Math.floor(syncedAgeSec / 60)}m ago`}
+                </div>
+              )}
             </div>
             <div className="p-3.5 md:p-4">
               <div className="text-ice-faint mb-1" style={{ ...FONT, fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -685,6 +704,7 @@ export function OptionsTradePage() {
                   bins={bins}
                   chartData={chartData}
                   currentPrice={currentPrice}
+                  syncedPrice={syncGap && syncedPrice !== null ? syncedPrice : undefined}
                   selectedMin={Number(lowerTick ?? market.minTick) / tickDivisor}
                   selectedMax={Number(upperTick ?? market.maxTick) / tickDivisor}
                   minPrice={market.minPrice}
@@ -859,6 +879,11 @@ export function OptionsTradePage() {
                 {oddsAfter !== null && !costLoading && (
                   <div className="text-ice-faint -mt-3 px-1" style={{ ...FONT, fontSize: '11px' }}>
                     Price impact{isPreview ? ' of $10' : ''}: odds {(winProbability * 100).toFixed(1)}% → ≈{(oddsAfter * 100).toFixed(1)}% after your trade
+                  </div>
+                )}
+                {syncGap && syncedPrice !== null && (
+                  <div className="text-amber-400 px-1" style={{ ...FONT, fontSize: '11px' }}>
+                    Odds and cost use the market's synced price (${syncedPrice.toFixed(2)}), which is in a different bin than the live price (${currentPrice.toFixed(2)}). Your order carries the live price, so the market syncs first and the final cost is re-quoted.
                   </div>
                 )}
 

@@ -1,12 +1,29 @@
-import { http } from 'wagmi';
+import { fallback, http } from 'wagmi';
 import { avalanche, avalancheFuji } from 'wagmi/chains';
 import { createConfig } from '@privy-io/wagmi';
 
+// Fuji reads: the official endpoint rate-limits per IP (shared with the keeper/bots on the
+// same network), so prefer publicnode and fall back to the official RPC on failure.
+const FUJI_RPCS = [
+  'https://avalanche-fuji-c-chain-rpc.publicnode.com',
+  'https://api.avax-test.network/ext/bc/C/rpc',
+];
+
+// Same chain with the RPC list above baked in, so the Privy embedded wallet (which
+// broadcasts through the chain's default RPC, not the wagmi transport) uses it too.
+export const fujiChain = {
+  ...avalancheFuji,
+  rpcUrls: {
+    ...avalancheFuji.rpcUrls,
+    default: { http: FUJI_RPCS },
+  },
+} as const;
+
 export const config = createConfig({
-  chains: [avalanche, avalancheFuji],
+  chains: [avalanche, fujiChain],
   transports: {
     [avalanche.id]: http(),
-    [avalancheFuji.id]: http('https://api.avax-test.network/ext/bc/C/rpc'),
+    [fujiChain.id]: fallback(FUJI_RPCS.map((url) => http(url, { retryCount: 2 }))),
   },
 });
 

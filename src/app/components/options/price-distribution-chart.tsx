@@ -5,6 +5,7 @@ export function PriceDistributionChart({
   bins,
   chartData,
   currentPrice,
+  syncedPrice,
   selectedMin,
   selectedMax,
   minPrice,
@@ -21,6 +22,8 @@ export function PriceDistributionChart({
   bins: { tick: bigint; price: number; probability: number }[];
   chartData: { time: number; price: number }[];
   currentPrice: number;
+  /** the contract's last synced oracle price, shown only when it sits in a different bin than currentPrice */
+  syncedPrice?: number;
   selectedMin: number;
   selectedMax: number;
   minPrice: number;
@@ -225,6 +228,7 @@ export function PriceDistributionChart({
   const selMinY = toY(selectedMin);
   const selMaxY = toY(selectedMax);
   const curY = toY(currentPrice);
+  const syncY = syncedPrice !== undefined ? toY(syncedPrice) : null;
 
   // Handle dimensions
   const handleBarW = 50;
@@ -426,6 +430,17 @@ export function PriceDistributionChart({
             fill={dragging === 'min' ? 'var(--ice-accent)' : 'var(--ice-accent2)'} />
         </g>
 
+        {/* Synced (on-chain) price: what the odds are centred on while it lags the live price */}
+        {syncY !== null && (
+          <g>
+            <line x1={padL} x2={padL + chartW} y1={syncY} y2={syncY} stroke="#f59e0b" strokeWidth={1} strokeDasharray="3 3" opacity={0.8} />
+            <rect x={padL + chartW - 64} y={syncY - 9} width={52} height={18} rx={4} fill="#f59e0b" opacity={0.9} />
+            <text x={padL + chartW - 38} y={syncY + 1} textAnchor="middle" dominantBaseline="middle"
+              fill="#1a1205" fontSize={9} fontWeight={600} fontFamily="Inter, sans-serif">
+              synced {fmtPrice(syncedPrice!)}
+            </text>
+          </g>
+        )}
         {/* Current price pill */}
         <g>
           <rect x={padL + chartW - 64} y={curY - 10} width={52} height={20} rx={4} fill="#ef4444" />
