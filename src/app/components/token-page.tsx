@@ -33,7 +33,6 @@ function findFamily(id: string) {
   return VARIANT_FAMILIES.find((f) => f.members.some((m) => m.id === id));
 }
 
-const FONT = { fontFamily: 'Inter, sans-serif' } as const;
 
 const TIMEFRAMES = [
   { label: '24H', days: 1 },
@@ -47,7 +46,7 @@ function fmtPrice(p?: number | null): string {
   if (p == null) return '—';
   if (p < 0.01) return `$${p.toFixed(6)}`;
   if (p < 1) return `$${p.toFixed(4)}`;
-  return `$${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function fmtCompact(n?: number | null): string {
@@ -55,7 +54,7 @@ function fmtCompact(n?: number | null): string {
   if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(2)}K`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
 function stripHtml(html?: string): string {
@@ -70,7 +69,7 @@ function Skeleton({ className = '' }: { className?: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h2 className="text-ice-text font-bold mb-3" style={{ ...FONT, fontSize: '16px' }}>{title}</h2>
+      <h2 className="text-ice-text font-bold mb-3 text-[16px]">{title}</h2>
       {children}
     </div>
   );
@@ -79,10 +78,10 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function StatCard({ label, value, sub, subUp, valueClass }: { label: string; value: string; sub?: string; subUp?: boolean; valueClass?: string }) {
   return (
     <div className="rounded-2xl bg-ice-surface border border-ice-line/15 p-4 flex flex-col gap-1.5">
-      <span className="font-mono uppercase text-ice-faint" style={{ fontSize: '10px', letterSpacing: '0.8px' }}>{label}</span>
-      <span className={cn('font-mono font-semibold', valueClass ?? 'text-ice-text')} style={{ fontSize: '16px' }}>{value}</span>
+      <span className="font-mono uppercase text-ice-faint text-[10px]" style={{ letterSpacing: '0.8px' }}>{label}</span>
+      <span className={cn('font-mono font-semibold', valueClass ?? 'text-ice-text', 'text-[16px]')}>{value}</span>
       {sub && (
-        <span className={cn('font-mono', subUp === undefined ? 'text-ice-faint' : subUp ? 'text-ice-up' : 'text-ice-down')} style={{ fontSize: '11px' }}>{sub}</span>
+        <span className={cn('font-mono', subUp === undefined ? 'text-ice-faint' : subUp ? 'text-ice-up' : 'text-ice-down', 'text-[11px]')}>{sub}</span>
       )}
     </div>
   );
@@ -104,14 +103,14 @@ function PriceChart({ id }: { id: string }) {
   return (
     <div className="rounded-2xl bg-ice-surface border border-ice-line/15 p-4 md:p-5">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-ice-text font-semibold" style={{ ...FONT, fontSize: '15px' }}>Price</span>
+        <span className="text-ice-text font-semibold text-[15px]">Price</span>
         <div className="flex gap-1">
           {TIMEFRAMES.map((tf) => (
             <button
               key={tf.days}
               onClick={() => setDays(tf.days)}
-              className={cn('px-2.5 py-1 rounded-lg transition-colors font-medium', days === tf.days ? 'bg-ice-accent/10 text-ice-accent border border-ice-line/30' : 'text-ice-muted hover:text-ice-text border border-transparent')}
-              style={{ ...FONT, fontSize: '12px' }}
+              className={cn('px-2.5 py-1 rounded-lg transition-colors font-medium', days === tf.days ? 'bg-ice-accent/10 text-ice-accent border border-ice-line/30' : 'text-ice-muted hover:text-ice-text border border-transparent', 'text-[12px]')}
+             
             >
               {tf.label}
             </button>
@@ -122,7 +121,7 @@ function PriceChart({ id }: { id: string }) {
         {loading ? (
           <Skeleton className="h-full w-full rounded-xl" />
         ) : data.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-ice-faint" style={{ ...FONT, fontSize: '13px' }}>No chart data</div>
+          <div className="h-full flex items-center justify-center text-ice-faint text-[13px]">No chart data</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
@@ -167,12 +166,12 @@ function About({ id, name }: { id: string; name: string }) {
         {loading ? (
           <div className="space-y-2"><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-3/4" /></div>
         ) : !text ? (
-          <p className="text-ice-faint" style={{ ...FONT, fontSize: '13px' }}>No description available.</p>
+          <p className="text-ice-faint text-[13px]">No description available.</p>
         ) : (
           <>
-            <p className={cn('text-ice-muted leading-relaxed', !expanded && 'line-clamp-6')} style={{ ...FONT, fontSize: '13px' }}>{text}</p>
+            <p className={cn('text-ice-muted leading-relaxed', !expanded && 'line-clamp-6', 'text-[13px]')}>{text}</p>
             {text.length > 280 && (
-              <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-1 mt-2 text-ice-accent" style={{ ...FONT, fontSize: '13px' }}>
+              <button onClick={() => setExpanded((v) => !v)} className="flex items-center gap-1 mt-2 text-ice-accent text-[13px]">
                 {expanded ? 'Read less' : 'Read more'}
                 <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', expanded && 'rotate-180')} />
               </button>
@@ -202,8 +201,8 @@ function Links({ info }: { info: ReturnType<typeof useTokenInfo>['info'] }) {
     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-ice-line/15">
       {links.map((l) => (
         <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ice-surface2 border border-ice-line/15 text-ice-muted hover:text-ice-text transition-colors"
-          style={{ ...FONT, fontSize: '12px' }}>
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-ice-surface2 border border-ice-line/15 text-ice-muted hover:text-ice-text transition-colors text-[12px]"
+         >
           {l.icon}{l.label}
         </a>
       ))}
@@ -230,7 +229,7 @@ function MarketsTable({ address }: { address?: string }) {
             <thead>
               <tr className="bg-ice-surface2/40 border-b border-ice-line/15">
                 {cols.map((h, i) => (
-                  <th key={i} className={cn('px-4 py-3 font-mono uppercase text-ice-faint whitespace-nowrap', i === 0 ? 'text-left' : 'text-right')} style={{ fontSize: '10px', letterSpacing: '0.8px' }}>{h}</th>
+                  <th key={i} className={cn('px-4 py-3 font-mono uppercase text-ice-faint whitespace-nowrap', i === 0 ? 'text-left' : 'text-right', 'text-[10px]')} style={{ letterSpacing: '0.8px' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -244,16 +243,16 @@ function MarketsTable({ address }: { address?: string }) {
                   <tr key={i} className="border-b border-ice-line/[0.06] last:border-0 hover:bg-ice-line/[0.03] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="text-ice-text font-semibold whitespace-nowrap" style={{ ...FONT, fontSize: '13px' }}>{p.name}</span>
-                        <a href={`https://www.geckoterminal.com/avax/pools/${p.address}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-ice-faint hover:text-ice-muted font-mono w-fit" style={{ fontSize: '11px' }}>
+                        <span className="text-ice-text font-semibold whitespace-nowrap text-[13px]">{p.name}</span>
+                        <a href={`https://www.geckoterminal.com/avax/pools/${p.address}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-ice-faint hover:text-ice-muted font-mono w-fit text-[11px]">
                           {p.dex ? p.dex.replace(/-/g, ' ') : truncAddr(p.address)} <ExternalLink className="w-3 h-3" />
                         </a>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-right text-ice-text font-mono whitespace-nowrap" style={{ fontSize: '13px' }}>{formatUSD(p.liquidityUsd)}</td>
-                    <td className="px-4 py-3 text-right text-ice-muted font-mono whitespace-nowrap" style={{ fontSize: '13px' }}>{formatUSD(p.volume24hUsd)}</td>
-                    <td className="px-4 py-3 text-right text-ice-muted font-mono whitespace-nowrap" style={{ fontSize: '13px' }}>{p.trades24h.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-ice-muted font-mono whitespace-nowrap" style={{ fontSize: '13px' }}>{p.wallets24h.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-ice-text font-mono whitespace-nowrap text-[13px]">{formatUSD(p.liquidityUsd)}</td>
+                    <td className="px-4 py-3 text-right text-ice-muted font-mono whitespace-nowrap text-[13px]">{formatUSD(p.volume24hUsd)}</td>
+                    <td className="px-4 py-3 text-right text-ice-muted font-mono whitespace-nowrap text-[13px]">{p.trades24h.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-right text-ice-muted font-mono whitespace-nowrap text-[13px]">{p.wallets24h.toLocaleString()}</td>
                   </tr>
                 ))
               )}
@@ -276,19 +275,19 @@ function VariantCard({ coin, tag, onClick }: { coin: CoinMarketData; tag: Varian
           <div className="w-8 h-8 rounded-full bg-ice-line/[0.08] flex items-center justify-center text-ice-text text-xs font-bold">{coin.symbol.slice(0, 2).toUpperCase()}</div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="text-ice-text font-semibold truncate" style={{ ...FONT, fontSize: '13px' }}>{coin.name}</div>
-          <div className="font-mono text-ice-faint" style={{ fontSize: '11px' }}>{coin.symbol.toUpperCase()}</div>
+          <div className="text-ice-text font-semibold truncate text-[13px]">{coin.name}</div>
+          <div className="font-mono text-ice-faint text-[11px]">{coin.symbol.toUpperCase()}</div>
         </div>
       </div>
-      <span className={cn('inline-block px-2 py-0.5 rounded-md border mb-3 font-mono', TAG_STYLE[tag])} style={{ fontSize: '10px' }}>{tag}</span>
+      <span className={cn('inline-block px-2 py-0.5 rounded-md border mb-3 font-mono', TAG_STYLE[tag], 'text-[10px]')}>{tag}</span>
       <div className="flex items-center justify-between">
         <div>
-          <div className="font-mono text-ice-faint uppercase" style={{ fontSize: '9px', letterSpacing: '0.5px' }}>Mkt Cap</div>
-          <div className="font-mono text-ice-text" style={{ fontSize: '12px' }}>${fmtCompact(coin.market_cap)}</div>
+          <div className="font-mono text-ice-faint uppercase text-[9px]" style={{ letterSpacing: '0.5px' }}>Mkt Cap</div>
+          <div className="font-mono text-ice-text text-[12px]">${fmtCompact(coin.market_cap)}</div>
         </div>
         <div className="text-right">
-          <div className="font-mono text-ice-faint uppercase" style={{ fontSize: '9px', letterSpacing: '0.5px' }}>24h Vol</div>
-          <div className="font-mono text-ice-text" style={{ fontSize: '12px' }}>${fmtCompact(coin.total_volume)}</div>
+          <div className="font-mono text-ice-faint uppercase text-[9px]" style={{ letterSpacing: '0.5px' }}>24h Vol</div>
+          <div className="font-mono text-ice-text text-[12px]">${fmtCompact(coin.total_volume)}</div>
         </div>
       </div>
     </button>
@@ -307,7 +306,7 @@ function Variants({ baseId }: { baseId: string }) {
   return (
     <div className="mt-6">
       <Section title="Variants">
-        <p className="text-ice-muted -mt-1 mb-4" style={{ ...FONT, fontSize: '13px' }}>Token representations of {fam.label} on Avalanche.</p>
+        <p className="text-ice-muted -mt-1 mb-4 text-[13px]">Token representations of {fam.label} on Avalanche.</p>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {loading || ordered.length === 0
             ? Array.from({ length: others.length }).map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)
@@ -326,7 +325,7 @@ export function TokenPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-6xl">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-6" style={{ ...FONT, fontSize: '14px' }}>
+      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-6 text-[14px]">
         <ArrowLeft className="w-4 h-4" /> Back
       </button>
 
@@ -373,15 +372,15 @@ function TokenDetailContent({ token, swapOpen, setSwapOpen }: { token: TokenDeta
             <TokenLogo token={token} />
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-ice-text font-bold" style={{ ...FONT, fontSize: '22px' }}>{token.name}</h1>
-                <span className="font-mono text-ice-faint" style={{ fontSize: '13px' }}>{token.symbol}</span>
+                <h1 className="text-ice-text font-bold text-[22px]">{token.name}</h1>
+                <span className="font-mono text-ice-faint text-[13px]">{token.symbol}</span>
                 {token.category && (
-                  <span className="px-2 py-0.5 rounded-md bg-ice-line/[0.06] border border-ice-line/15 text-ice-muted capitalize" style={{ ...FONT, fontSize: '11px' }}>{token.category.replace('-', ' ')}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-ice-line/[0.06] border border-ice-line/15 text-ice-muted capitalize text-[11px]">{token.category.replace('-', ' ')}</span>
                 )}
               </div>
               <div className="flex items-baseline gap-3 mt-1.5">
-                <span className="font-mono font-semibold text-ice-text" style={{ fontSize: '28px', lineHeight: 1 }}>{fmtPrice(token.current_price)}</span>
-                <span className={cn('flex items-center gap-1 font-mono', up ? 'text-ice-up' : 'text-ice-down')} style={{ fontSize: '14px' }}>
+                <span className="font-mono font-semibold text-ice-text text-[28px]" style={{ lineHeight: 1 }}>{fmtPrice(token.current_price)}</span>
+                <span className={cn('flex items-center gap-1 font-mono', up ? 'text-ice-up' : 'text-ice-down', 'text-[14px]')}>
                   {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}{up ? '+' : ''}{change.toFixed(2)}%
                 </span>
               </div>
@@ -390,17 +389,17 @@ function TokenDetailContent({ token, swapOpen, setSwapOpen }: { token: TokenDeta
           <div className="flex items-center gap-2 shrink-0">
             {token.address && (
               <a href={`https://snowtrace.io/token/${token.address}`} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-ice-surface2 border border-ice-line/15 text-ice-muted hover:text-ice-text transition-colors" style={{ ...FONT, fontSize: '13px' }}>
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-ice-surface2 border border-ice-line/15 text-ice-muted hover:text-ice-text transition-colors text-[13px]">
                 Snowtrace <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
             {token.restricted ? (
-              <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-yellow-500/10 text-yellow-500" style={{ ...FONT, fontSize: '13px' }}>
+              <div className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-yellow-500/10 text-yellow-500 text-[13px]">
                 <Lock className="w-3.5 h-3.5" /> Institutional
               </div>
             ) : (
-              <button onClick={() => setSwapOpen(true)} className="px-6 py-2.5 rounded-xl font-semibold transition-transform hover:-translate-y-px"
-                style={{ ...FONT, fontSize: '14px', background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)', color: '#06223a', boxShadow: '0 2px 16px rgba(139,228,255,0.25)' }}>
+              <button onClick={() => setSwapOpen(true)} className="px-6 py-2.5 rounded-xl font-semibold transition-transform hover:-translate-y-px text-[14px]"
+                style={{ background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)', color: '#06223a', boxShadow: '0 2px 16px rgba(139,228,255,0.25)' }}>
                 Trade
               </button>
             )}

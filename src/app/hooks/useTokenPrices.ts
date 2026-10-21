@@ -18,6 +18,8 @@ export interface TokenData {
   category?: TokenCategory;
   address?: string;
   restricted?: boolean;
+  /** CoinGecko figures are chain-wide for this asset; leave it out of Avalanche aggregates */
+  excludeFromStats?: boolean;
 }
 
 interface UseTokenPricesResult {
@@ -88,16 +90,19 @@ export function useAvaxPrice(): UseAvaxPriceResult {
   };
 }
 
-// Calculate market stats from tokens
+// Calculate market stats from tokens.
+// Only Avalanche-native assets count toward the aggregates: multichain assets and
+// wrappers report chain-wide CoinGecko numbers that would swamp the total.
 export function useMarketStats(tokens: TokenData[]) {
-  const totalMarketCap = tokens.reduce((sum, t) => sum + t.marketCap, 0);
-  const total24hVolume = tokens.reduce((sum, t) => sum + t.volume24h, 0);
+  const native = tokens.filter(t => !t.excludeFromStats);
+  const totalMarketCap = native.reduce((sum, t) => sum + (t.marketCap || 0), 0);
+  const total24hVolume = native.reduce((sum, t) => sum + (t.volume24h || 0), 0);
   const tokenCount = tokens.length;
 
   // Weighted average 24h change based on market cap
   const weightedChange =
-    tokens.length > 0
-      ? tokens.reduce((sum, t) => sum + t.change24h * t.marketCap, 0) / totalMarketCap
+    totalMarketCap > 0
+      ? native.reduce((sum, t) => sum + t.change24h * (t.marketCap || 0), 0) / totalMarketCap
       : 0;
 
   return {
@@ -228,6 +233,7 @@ export function useMarketTokens(): UseTokenPricesResult {
           category: marketToken?.category,
           address: marketToken?.address,
           restricted: marketToken?.restricted,
+          excludeFromStats: marketToken?.excludeFromStats,
         };
       });
 

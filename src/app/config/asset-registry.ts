@@ -91,6 +91,7 @@ const UNKNOWN_ASSET: AssetConfig = {
   priceDecimals: 2,
   logo: '',
   accentColor: '#8be4ff',
+  dailyVol: 0,
 };
 
 /**
@@ -103,7 +104,7 @@ const UNKNOWN_ASSET: AssetConfig = {
  * - XAU:  dollar ticks, 2000 <= minTick < 20000 (gold ~$2k-$10k)
  * - BTC:  dollar ticks, minTick >= 20000 (BTC ~$20k+)
  */
-export function detectAsset(minTick: bigint, maxTick: bigint): AssetConfig {
+export function detectAsset(minTick: bigint, _maxTick: bigint): AssetConfig {
   const min = Number(minTick);
 
   // Legacy AVAX dollar-tick markets (e.g. minTick=4, $4-$14 test markets)

@@ -66,7 +66,7 @@ export function usePortfolio(): PortfolioData {
     []
   );
 
-  const { data, isLoading, error, refetch } = useQuery<PortfolioQueryData>({
+  const { data, isLoading, error } = useQuery<PortfolioQueryData>({
     queryKey: [...queryKeys.portfolio(address ?? ''), nativeBalance?.value?.toString()],
     queryFn: async () => {
       // Fetch token balances and native balance from indexer in parallel

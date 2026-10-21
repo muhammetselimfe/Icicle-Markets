@@ -2,11 +2,13 @@ import { useCallback, useState } from 'react';
 import { useChainId, useSwitchChain } from 'wagmi';
 import { CHAIN_IDS } from '@/app/config/wagmi';
 
-const TAB_CHAINS: Record<string, number> = {
+type SupportedChainId = (typeof CHAIN_IDS)[keyof typeof CHAIN_IDS];
+
+const TAB_CHAINS: Record<string, SupportedChainId> = {
   options: CHAIN_IDS.FUJI,
 };
 
-function getChainForTab(tab: string): number {
+function getChainForTab(tab: string): SupportedChainId {
   return TAB_CHAINS[tab] ?? CHAIN_IDS.MAINNET;
 }
 

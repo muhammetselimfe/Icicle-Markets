@@ -29,7 +29,7 @@ import { useBinProbabilities } from '@/app/hooks/useBinProbabilities';
 import { useSyncedOracle } from '@/app/hooks/useSyncedOracle';
 import { useBinExposure, rangeHeadroom } from '@/app/hooks/useBinExposure';
 import { MarketState } from '@/app/types/options';
-import { generateTicks, formatTickAsPrice, formatUsdc, tickToPrice } from '@/app/utils/options';
+import { formatTickAsPrice, formatUsdc } from '@/app/utils/options';
 import { PriceDistributionChart } from '@/app/components/options/price-distribution-chart';
 import { PositionCard, ClaimAllButton } from '@/app/components/options/trade-position-card';
 
@@ -221,7 +221,7 @@ export function OptionsTradePage() {
   const { step, txHash, error: execError, openPosition, reset } = useOptionsTrading();
 
   const { markets, loading: marketsLoading } = useOptionsMarkets();
-  const { positions, loading: positionsLoading } = useOptionsPositions();
+  const { positions } = useOptionsPositions();
   const marketId = Number(marketIdParam);
   const market = markets.find((m) => m.marketId === marketId) ?? null;
 
@@ -275,11 +275,6 @@ export function OptionsTradePage() {
   const [showSettings, setShowSettings] = useState(false);
 
   const isWrongChain = chainId !== CHAIN_IDS.FUJI;
-
-  const availableTicks = useMemo(() => {
-    if (!market) return [];
-    return generateTicks(market.minTick, market.maxTick, market.tickSpacing);
-  }, [market]);
 
   // Initialize tick range centered near current price (wait for price to load)
   useEffect(() => {
@@ -881,11 +876,11 @@ export function OptionsTradePage() {
                     Price impact{isPreview ? ' of $10' : ''}: odds {(winProbability * 100).toFixed(1)}% → ≈{(oddsAfter * 100).toFixed(1)}% after your trade
                   </div>
                 )}
-                {syncGap && syncedPrice !== null && (
+                {syncGap && syncedPrice !== null ? (
                   <div className="text-amber-400 px-1" style={{ ...FONT, fontSize: '11px' }}>
                     Odds and cost use the market's synced price (${syncedPrice.toFixed(2)}), which is in a different bin than the live price (${currentPrice.toFixed(2)}). Your order carries the live price, so the market syncs first and the final cost is re-quoted.
                   </div>
-                )}
+                ) : null}
 
                 {/* Spend input */}
                 <div>
@@ -995,7 +990,7 @@ export function OptionsTradePage() {
                 )}
 
                 {/* Payout summary (shows a $10 preview until an amount is entered) */}
-                {step !== 'success' && resolvedQty > 0 && cost && (
+                {step !== 'success' && resolvedQty > 0 && !!cost && (
                   <div className="bg-ice-surface2 border border-ice-line/[0.06] rounded-xl p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-ice-faint" style={{ ...FONT, fontSize: '12px' }}>

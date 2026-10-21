@@ -36,7 +36,8 @@ function Root() {
           walletList: ['metamask', 'coinbase_wallet', 'wallet_connect'],
         },
         loginMethods: ['wallet', 'email', 'google', 'twitter', 'github'],
-        embeddedWallets: { createOnLogin: 'users-without-wallets' },
+        // Privy v3 nests this under `ethereum`; the old top-level key is silently ignored.
+        embeddedWallets: { ethereum: { createOnLogin: 'users-without-wallets' } },
         // Fuji with the publicnode RPC first: the official endpoint rate-limits per IP.
         supportedChains: [avalanche, fujiChain],
         defaultChain: fujiChain,

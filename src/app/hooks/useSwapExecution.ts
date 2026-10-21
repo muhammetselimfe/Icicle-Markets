@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAccount, usePublicClient, useWalletClient, useWaitForTransactionReceipt } from 'wagmi';
 import type { SwapStep, SwapToken } from '@/app/types/swap';
@@ -37,17 +37,24 @@ export function useSwapExecution(): UseSwapExecutionResult {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+  const { isSuccess: isConfirmed, isError: isReverted } = useWaitForTransactionReceipt({
     hash: txHash as `0x${string}` | undefined,
   });
 
-  // Update step based on transaction confirmation
-  if (txHash && isConfirmed && step === 'swapping') {
-    setStep('success');
-    // Invalidate portfolio and transaction history so they refresh immediately
-    queryClient.invalidateQueries({ queryKey: ['portfolio'] });
-    queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
-  }
+  // Move to success/error once the receipt lands. This must be an effect, not inline in
+  // render: setting state during render re-renders in a loop and double-fires under StrictMode.
+  useEffect(() => {
+    if (!txHash || step !== 'swapping') return;
+    if (isConfirmed) {
+      setStep('success');
+      // Invalidate portfolio and transaction history so they refresh immediately
+      queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+      queryClient.invalidateQueries({ queryKey: ['transactionHistory'] });
+    } else if (isReverted) {
+      setError('Swap transaction reverted on-chain');
+      setStep('error');
+    }
+  }, [txHash, step, isConfirmed, isReverted, queryClient]);
 
   const checkAndApprove = useCallback(
     async (tokenAddress: string, amount: bigint): Promise<boolean> => {

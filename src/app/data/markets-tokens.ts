@@ -9,6 +9,11 @@ export interface MarketToken {
   decimals: number;
   logoUrl?: string;
   restricted?: boolean;
+  /**
+   * CoinGecko reports this asset's market cap and volume across all chains (or it is a
+   * wrapper of another listed asset), so it is excluded from the Avalanche aggregate stats.
+   */
+  excludeFromStats?: boolean;
 }
 
 export const MARKET_CATEGORIES: Record<TokenCategory, string> = {
@@ -365,6 +370,29 @@ function getLogoUrl(address: string): string {
   return `https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/${checksummed}/logo.png`;
 }
 
+// CoinGecko IDs whose market cap / volume are NOT Avalanche-specific. Summing these into
+// "Avalanche market cap" would add the global caps of USDC, USDT, WETH, LINK, AAVE, etc.
+// (hundreds of billions), so they are left out of the aggregate stats on the Markets page.
+const GLOBAL_STATS_IDS = new Set<string>([
+  'wrapped-avax',   // wrapper of AVAX, already counted
+  'weth',
+  'chainlink',
+  'usd-coin',
+  'tether',
+  'dai',
+  'agora-dollar',
+  'euro-coin',
+  'gmx',
+  'aave',
+  'tether-gold-tokens',
+  'blackrock-usd-institutional-digital-liquidity-fund',
+  'apollo-diversified-credit-securitize-fund',
+  'vaneck-treasury-fund',
+  'janus-henderson-anemoy-aaa-clo-fund',
+  'janus-henderson-anemoy-treasury-fund',
+  'franklin-templeton-benji',
+]);
+
 // Build the final MARKETS_TOKENS array
 export const MARKETS_TOKENS: MarketToken[] = Object.entries(LISTED_TOKENS).map(([address, config]) => ({
   symbol: config.symbol,
@@ -375,6 +403,7 @@ export const MARKETS_TOKENS: MarketToken[] = Object.entries(LISTED_TOKENS).map((
   decimals: config.decimals,
   logoUrl: config.logoUrl || getLogoUrl(address),
   ...(config.restricted && { restricted: true }),
+  ...(GLOBAL_STATS_IDS.has(config.coingeckoId) && { excludeFromStats: true }),
 }));
 
 // Helper functions

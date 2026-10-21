@@ -16,7 +16,7 @@ function Skeleton({ className = '' }: { className?: string }) {
 // Error display component
 function ErrorDisplay({ message }: { message: string }) {
   return (
-    <div className="flex items-center gap-2 text-red-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+    <div className="flex items-center gap-2 text-red-500 text-[14px]">
       <AlertCircle className="w-4 h-4" />
       {message}
     </div>
@@ -47,8 +47,7 @@ function AnimatedBlockTime({ value }: { value: number }) {
 
   return (
     <span
-      className={cn("text-green-500 font-medium", isChanged && "animate-pulse")}
-      style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
+      className={cn("text-green-500 font-medium", isChanged && "animate-pulse", 'text-[15px]')}
     >
       {formatted}
     </span>
@@ -74,8 +73,7 @@ function AnimatedBlockNumber({ value }: { value: number }) {
 
   return (
     <span
-      className={cn("text-ice-text font-medium", isChanged && "animate-pulse")}
-      style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
+      className={cn("text-ice-text font-medium", isChanged && "animate-pulse", 'text-[15px]')}
     >
       {displayValue.toLocaleString()}
     </span>
@@ -120,6 +118,11 @@ export function ExplorerView() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
+      {statsError && (
+        <div className="mb-4">
+          <ErrorDisplay message={`Chain stats unavailable: ${statsError}`} />
+        </div>
+      )}
       {/* Stats + TPS Chart Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         {/* Stats Grid */}
@@ -131,11 +134,11 @@ export function ExplorerView() {
                 <Activity className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>TPS</div>
+                <div className="text-ice-muted text-[13px]">TPS</div>
                 {tpsLoading ? (
                   <Skeleton className="h-5 w-12" />
                 ) : (
-                  <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-medium text-[15px]">
                     {chartTpsData.length > 0 ? chartTpsData[chartTpsData.length - 1]?.tps || '-' : '-'}
                   </div>
                 )}
@@ -150,7 +153,7 @@ export function ExplorerView() {
                 <Zap className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Block Time</div>
+                <div className="text-ice-muted text-[13px]">Block Time</div>
                 {blocksLoading && blocks.length === 0 ? (
                   <Skeleton className="h-5 w-16" />
                 ) : (
@@ -167,7 +170,7 @@ export function ExplorerView() {
                 <Box className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Latest Block</div>
+                <div className="text-ice-muted text-[13px]">Latest Block</div>
                 {blocksLoading && blocks.length === 0 ? (
                   <Skeleton className="h-5 w-24" />
                 ) : (
@@ -184,11 +187,11 @@ export function ExplorerView() {
                 <Users className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Validators</div>
+                <div className="text-ice-muted text-[13px]">Validators</div>
                 {validatorsLoading ? (
                   <Skeleton className="h-5 w-14" />
                 ) : (
-                  <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-medium text-[15px]">
                     {validatorCount.toLocaleString()}
                   </div>
                 )}
@@ -203,11 +206,11 @@ export function ExplorerView() {
                 <Server className="w-5 h-5 text-ice-muted" />
               </div>
               <div>
-                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>Total TXs</div>
+                <div className="text-ice-muted text-[13px]">Total TXs</div>
                 {statsLoading ? (
                   <Skeleton className="h-5 w-16" />
                 ) : (
-                  <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                  <div className="text-ice-text font-medium text-[15px]">
                     {stats ? formatLargeNumber(stats.total_txs) : '-'}
                   </div>
                 )}
@@ -219,17 +222,16 @@ export function ExplorerView() {
           <div className="bg-ice-surface p-4 rounded-xl">
             <div className="flex items-center gap-3">
               <div>
-                <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>AVAX</div>
+                <div className="text-ice-muted text-[13px]">AVAX</div>
                 {priceLoading ? (
                   <Skeleton className="h-5 w-16" />
                 ) : (
                   <>
-                    <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}>
+                    <div className="text-ice-text font-medium text-[15px]">
                       ${avaxPrice.toFixed(2)}
                     </div>
                     <div
-                      className={cn("font-medium", avaxChange >= 0 ? "text-green-500" : "text-red-500")}
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+                      className={cn("font-medium", avaxChange >= 0 ? "text-green-500" : "text-red-500", 'text-[13px]')}
                     >
                       {formatPercentage(avaxChange)}
                     </div>
@@ -243,12 +245,12 @@ export function ExplorerView() {
         {/* TPS Chart */}
         <div className="bg-ice-surface p-4 rounded-xl flex flex-col min-h-[200px] md:min-h-0">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <div className="text-ice-muted text-[13px]">
               TPS (24H)
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-green-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '11px' }}>
+              <span className="text-green-500 text-[11px]">
                 Live
               </span>
             </div>

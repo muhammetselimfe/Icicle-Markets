@@ -11,7 +11,8 @@ interface UseBlocksWebSocketResult {
 
 const WS_URL = 'wss://api.l1beat.io/ws/blocks/43114';
 const MAX_BLOCKS = 10;
-const RECONNECT_DELAY = 3000;
+const RECONNECT_BASE_DELAY = 3000;
+const RECONNECT_MAX_DELAY = 30_000;
 
 export function useBlocksWebSocket(): UseBlocksWebSocketResult {
   const [blocks, setBlocks] = useState<Block[]>([]);
@@ -19,16 +20,23 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
   const [error, setError] = useState<string | null>(null);
   const [lastError, setLastError] = useState<{ message: string; timestamp: Date } | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const attemptsRef = useRef(0);
+  // Set on unmount so a close triggered by cleanup does not schedule a reconnect.
+  const disposedRef = useRef(false);
 
   const clearError = useCallback(() => {
     setLastError(null);
   }, []);
 
   const connect = useCallback(() => {
-    // Clean up existing connection
+    if (disposedRef.current) return;
+
+    // Clean up existing connection without triggering its reconnect handler
     if (wsRef.current) {
+      wsRef.current.onclose = null;
       wsRef.current.close();
+      wsRef.current = null;
     }
 
     try {
@@ -36,6 +44,7 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
       wsRef.current = ws;
 
       ws.onopen = () => {
+        attemptsRef.current = 0;
         setConnected(true);
         setError(null);
       };
@@ -45,18 +54,10 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
           const message = JSON.parse(event.data);
 
           if (message.type === 'initial') {
-            // Initial batch of blocks
-
             setBlocks(message.data.slice(0, MAX_BLOCKS));
           } else if (message.type === 'new_block') {
-            // New block - add to front, remove oldest
-
-            setBlocks(prev => {
-              const newBlocks = [message.data, ...prev];
-              return newBlocks.slice(0, MAX_BLOCKS);
-            });
+            setBlocks(prev => [message.data, ...prev].slice(0, MAX_BLOCKS));
           } else if (message.type === 'ping') {
-            // Respond with pong
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ type: 'pong' }));
             }
@@ -66,23 +67,21 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
         }
       };
 
-      ws.onerror = (event) => {
-        console.error('[WebSocket] Error:', event);
+      ws.onerror = () => {
         setError('WebSocket connection error');
         setLastError({ message: 'WebSocket connection error', timestamp: new Date() });
       };
 
-      ws.onclose = (event) => {
+      ws.onclose = () => {
         setConnected(false);
-        wsRef.current = null;
+        if (wsRef.current === ws) wsRef.current = null;
+        if (disposedRef.current) return;
 
-        // Attempt to reconnect after delay
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-        }
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, RECONNECT_DELAY);
+        // Reconnect with exponential backoff, capped
+        const delay = Math.min(RECONNECT_BASE_DELAY * 2 ** attemptsRef.current, RECONNECT_MAX_DELAY);
+        attemptsRef.current += 1;
+        if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = setTimeout(connect, delay);
       };
     } catch (err) {
       console.error('[WebSocket] Failed to connect:', err);
@@ -92,14 +91,19 @@ export function useBlocksWebSocket(): UseBlocksWebSocketResult {
   }, []);
 
   useEffect(() => {
+    disposedRef.current = false;
     connect();
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      disposedRef.current = true;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [connect]);

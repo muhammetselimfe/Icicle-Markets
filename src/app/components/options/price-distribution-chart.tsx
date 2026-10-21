@@ -11,7 +11,6 @@ export function PriceDistributionChart({
   minPrice,
   maxPrice,
   tickSpacing,
-  numBins,
   priceDecimals = 2,
   timeframeMinutes = 1440,
   windowStart,

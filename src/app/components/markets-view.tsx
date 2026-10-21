@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Flame, Lock, TrendingUp, TrendingDown, Target, ArrowRight } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
@@ -19,7 +19,7 @@ function Skeleton({ className = '' }: { className?: string }) {
 // 7d trend rendered as compact ice-colored bars (matches the design language)
 function MiniBars({ data, up }: { data: number[]; up: boolean }) {
   if (!data || data.length < 2) {
-    return <div className="text-ice-faint font-mono text-center" style={{ fontSize: '13px' }}>–</div>;
+    return <div className="text-ice-faint font-mono text-center text-[13px]">–</div>;
   }
   const target = 20;
   const step = Math.max(1, Math.floor(data.length / target));
@@ -47,11 +47,33 @@ function MiniBars({ data, up }: { data: number[]; up: boolean }) {
 function formatTokenPrice(p: number): string {
   if (p < 0.01) return p.toFixed(6);
   if (p < 1) return p.toFixed(4);
-  return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Category tabs mapping
 const CATEGORY_TABS: TokenCategory[] = ['majors', 'defi', 'gaming', 'stablecoins', 'meme', 'liquid-staking', 'rwa'];
+
+// Favorites persist per browser. Storage can be unavailable (private mode, blocked), so
+// every access is guarded and the page works without it.
+const FAVORITES_KEY = 'icicle-favorites';
+
+function loadFavorites(): string[] {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFavorites(ids: string[]) {
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
+  } catch {
+    // ignore — favorites are a convenience, not state we must keep
+  }
+}
 
 // ── Stats strip ───────────────────────────────────────────────────────────
 function StatCard({
@@ -69,11 +91,11 @@ function StatCard({
 }) {
   return (
     <div className="flex-1 rounded-2xl bg-ice-surface border border-ice-line/15 p-4 lg:p-[18px] flex flex-col gap-2.5">
-      <span className="font-mono text-ice-faint uppercase tracking-wide" style={{ fontSize: '10px', letterSpacing: '1px' }}>
+      <span className="font-mono text-ice-faint uppercase tracking-wide text-[10px]" style={{ letterSpacing: '1px' }}>
         {label}
       </span>
       <div className="flex items-end justify-between gap-2">
-        <span className="font-mono font-semibold text-ice-text leading-none" style={{ fontSize: '22px' }}>
+        <span className="font-mono font-semibold text-ice-text leading-none text-[22px]">
           {value}
         </span>
         {delta && (
@@ -90,7 +112,7 @@ function StatCard({
             ) : (
               <TrendingDown className="w-3 h-3 text-ice-down" />
             )}
-            <span className={cn('font-mono', count ? 'text-ice-up' : deltaUp ? 'text-ice-up' : 'text-ice-down')} style={{ fontSize: '12px' }}>
+            <span className={cn('font-mono', count ? 'text-ice-up' : deltaUp ? 'text-ice-up' : 'text-ice-down', 'text-[12px]')}>
               {delta}
             </span>
           </div>
@@ -109,12 +131,12 @@ function StatsStrip({ tokens }: { tokens: TokenData[] }) {
   return (
     <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-8">
       <StatCard
-        label="Avalanche Market Cap"
+        label="Ecosystem Market Cap"
         value={formatUSD(totalMarketCap)}
         delta={fmtPct(avgChange24h)}
         deltaUp={avgChange24h >= 0}
       />
-      <StatCard label="24h Volume" value={formatUSD(total24hVolume)} />
+      <StatCard label="Ecosystem Volume 24h" value={formatUSD(total24hVolume)} />
       <StatCard
         label="AVAX Price"
         value={avax.price > 0 ? `$${avax.price.toFixed(2)}` : '—'}
@@ -129,7 +151,8 @@ function StatsStrip({ tokens }: { tokens: TokenData[] }) {
 export function MarketsView() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('trending');
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(loadFavorites);
+  useEffect(() => { saveFavorites(favorites); }, [favorites]);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<{ symbol: string; address?: string } | null>(null);
 
@@ -216,18 +239,17 @@ export function MarketsView() {
                 <Target className="w-[18px] h-[18px] text-ice-accent" />
               </div>
               <div className="min-w-0">
-                <div className="text-ice-text font-bold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px' }}>
+                <div className="text-ice-text font-bold text-[18px]">
                   Prediction Markets
                 </div>
-                <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+                <p className="text-ice-muted text-[13px]">
                   Bet on where asset prices will land. Pick a range, trade options, win if you're right.
                 </p>
               </div>
             </div>
             <button
               onClick={() => navigate('/options')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-ice-surface border border-ice-line/15 text-ice-muted hover:text-ice-text hover:border-ice-line/30 transition-colors"
-              style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-ice-surface border border-ice-line/15 text-ice-muted hover:text-ice-text hover:border-ice-line/30 transition-colors text-[13px]"
             >
               View all markets
               <ArrowRight className="w-3.5 h-3.5" />
@@ -266,10 +288,10 @@ export function MarketsView() {
           <TrendingUp className="w-[18px] h-[18px] text-ice-accent" />
         </div>
         <div className="min-w-0">
-          <div className="text-ice-text font-bold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px' }}>
+          <div className="text-ice-text font-bold text-[18px]">
             Spot Trading
           </div>
-          <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+          <p className="text-ice-muted text-[13px]">
             Swap Avalanche tokens instantly. Browse prices, charts, and trade directly.
           </p>
         </div>
@@ -290,9 +312,7 @@ export function MarketsView() {
                   'flex items-center gap-2 px-4 py-2 rounded-[9px] transition-all font-medium whitespace-nowrap border',
                   isActive
                     ? 'bg-ice-accent/10 border-ice-line/40 text-ice-accent'
-                    : 'bg-ice-surface border-ice-line/15 text-ice-muted hover:text-ice-text',
-                )}
-                style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
+                    : 'bg-ice-surface border-ice-line/15 text-ice-muted hover:text-ice-text', 'text-[14px]')}
               >
                 {Icon && <Icon className="w-4 h-4" />}
                 {!tab.iconOnly && <span>{tab.label}</span>}
@@ -345,10 +365,10 @@ export function MarketsView() {
                       )}
                     </div>
                     <div>
-                      <div className="text-ice-text font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
+                      <div className="text-ice-text font-medium text-[15px]">
                         {token.name}
                       </div>
-                      <div className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
+                      <div className="text-ice-muted text-[13px]">
                         {token.symbol}
                       </div>
                     </div>
@@ -367,12 +387,11 @@ export function MarketsView() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-ice-text font-mono font-medium" style={{ fontSize: '16px' }}>
+                    <div className="text-ice-text font-mono font-medium text-[16px]">
                       ${formatTokenPrice(token.price)}
                     </div>
                     <div
-                      className={cn('font-mono font-medium', isPositive ? 'text-ice-up' : 'text-ice-down')}
-                      style={{ fontSize: '13px' }}
+                      className={cn('font-mono font-medium', isPositive ? 'text-ice-up' : 'text-ice-down', 'text-[13px]')}
                     >
                       {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
                     </div>
@@ -380,15 +399,14 @@ export function MarketsView() {
                   {token.restricted ? (
                     <div className="flex items-center gap-1.5 px-3 py-2.5 bg-yellow-500/10 rounded-lg min-h-[44px]">
                       <Lock className="w-3.5 h-3.5 text-yellow-500" />
-                      <span className="text-yellow-500 font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                      <span className="text-yellow-500 font-medium text-[12px]">
                         Institutional
                       </span>
                     </div>
                   ) : (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleBuyClick(token); }}
-                      className="px-4 py-2.5 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 rounded-lg font-semibold transition-colors min-h-[44px]"
-                      style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
+                      className="px-4 py-2.5 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 rounded-lg font-semibold transition-colors min-h-[44px] text-[14px]"
                     >
                       Trade
                     </button>
@@ -474,10 +492,10 @@ export function MarketsView() {
                               )}
                             </div>
                             <div>
-                              <div className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
+                              <div className="text-ice-text font-semibold text-[14px]">
                                 {token.symbol}
                               </div>
-                              <div className="text-ice-muted truncate max-w-[160px]" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                              <div className="text-ice-muted truncate max-w-[160px] text-[12px]">
                                 {token.name}
                               </div>
                             </div>
@@ -486,7 +504,7 @@ export function MarketsView() {
 
                         {/* Price */}
                         <td className="px-4 py-4 text-right">
-                          <span className="font-mono text-ice-text" style={{ fontSize: '14px' }}>
+                          <span className="font-mono text-ice-text text-[14px]">
                             ${formatTokenPrice(token.price)}
                           </span>
                         </td>
@@ -499,7 +517,7 @@ export function MarketsView() {
                             ) : (
                               <TrendingDown className="w-3.5 h-3.5 text-ice-down" />
                             )}
-                            <span className={cn('font-mono', isPositive ? 'text-ice-up' : 'text-ice-down')} style={{ fontSize: '13px' }}>
+                            <span className={cn('font-mono', isPositive ? 'text-ice-up' : 'text-ice-down', 'text-[13px]')}>
                               {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
                             </span>
                           </div>
@@ -512,12 +530,12 @@ export function MarketsView() {
 
                         {/* Market Cap */}
                         <td className="px-4 py-4 text-right">
-                          <span className="font-mono text-ice-muted" style={{ fontSize: '13px' }}>{formatUSD(token.marketCap)}</span>
+                          <span className="font-mono text-ice-muted text-[13px]">{formatUSD(token.marketCap)}</span>
                         </td>
 
                         {/* Volume 24h */}
                         <td className="px-4 py-4 text-right">
-                          <span className="font-mono text-ice-muted" style={{ fontSize: '13px' }}>{formatUSD(token.volume24h)}</span>
+                          <span className="font-mono text-ice-muted text-[13px]">{formatUSD(token.volume24h)}</span>
                         </td>
 
                         {/* Action */}
@@ -525,15 +543,14 @@ export function MarketsView() {
                           {token.restricted ? (
                             <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-yellow-500/10 rounded-lg">
                               <Lock className="w-3.5 h-3.5 text-yellow-500" />
-                              <span className="text-yellow-500 font-medium" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px' }}>
+                              <span className="text-yellow-500 font-medium text-[12px]">
                                 Institutional
                               </span>
                             </div>
                           ) : (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleBuyClick(token); }}
-                              className="px-4 py-2 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 rounded-lg font-semibold transition-colors"
-                              style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}
+                              className="px-4 py-2 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 rounded-lg font-semibold transition-colors text-[13px]"
                             >
                               Trade
                             </button>
