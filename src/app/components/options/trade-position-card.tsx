@@ -16,7 +16,7 @@ const CLOSE_SLIPPAGE_BPS = 200n; // 2% slippage protection on close
 export function PositionCard({ position: p, tickDivisor = 1 }: { position: PositionDisplay; tickDivisor?: number }) {
   const chainId = useChainId();
   const { switchForTab, isSwitching } = useChainSwitch();
-  const { step, txHash, error: execError, closePosition, claimPayout, reset } = useOptionsTrading();
+  const { step, error: execError, closePosition, claimPayout, reset } = useOptionsTrading();
   const isWrongChain = chainId !== CHAIN_IDS.FUJI;
   const prevStepRef = useRef(step);
 
@@ -85,7 +85,6 @@ export function PositionCard({ position: p, tickDivisor = 1 }: { position: Posit
 
   const isActionDisabled = step === 'closing' || step === 'claiming' || step === 'success';
   const isBusy = step === 'closing' || step === 'claiming' || isSwitching;
-  const qty = Number(p.quantity) / 1e6;
 
   // Open position: the headline is what it pays if it WINS (quantity x $1). The sell-back
   // value is secondary — selling early walks the price back down, so large positions in a
@@ -99,7 +98,6 @@ export function PositionCard({ position: p, tickDivisor = 1 }: { position: Posit
   const sellPct = hasCostBasis && costUsd > 0 ? (Number(p.currentValue) / 1e6 / costUsd - 1) * 100 : null;
   const headlinePnl = isOpen ? winPnl : pnl;
   const pnlColor = headlinePnl !== null ? (headlinePnl >= 0 ? '#4dff88' : '#ff4d4d') : undefined;
-  const valueUsd = Number(effectiveValue) / 1e6;
 
   return (
     <div className="bg-ice-surface border border-ice-line/15 rounded-xl hover:border-[#8be4ff]/20 transition-colors relative overflow-hidden">
