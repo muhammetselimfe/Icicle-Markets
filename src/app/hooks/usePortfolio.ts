@@ -201,8 +201,8 @@ export function usePortfolio(): PortfolioData {
       };
     },
     enabled: isConnected && !!address,
-    refetchInterval: 30_000,
-    staleTime: 15_000,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
   });
 
   const handleRefetch = useCallback(() => {

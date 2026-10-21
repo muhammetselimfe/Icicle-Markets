@@ -17,10 +17,10 @@ export function useSwapPrices(addresses: string[]) {
 
   const { data } = useQuery({
     queryKey: queryKeys.swapPrices(key),
-    queryFn: () => coingecko.getSimplePrice(ids, false, false, false),
+    queryFn: () => coingecko.getSimplePrice(ids),
     enabled: ids.length > 0,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const priceOf = useCallback(

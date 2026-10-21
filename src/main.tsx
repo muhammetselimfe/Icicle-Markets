@@ -8,6 +8,7 @@ import { WagmiProvider } from '@privy-io/wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { avalanche } from 'wagmi/chains';
 import { config, fujiChain } from '@/app/config/wagmi';
+import { CoinGeckoRateLimitError } from '@/app/services/coingecko';
 import App from "./app/App.tsx";
 import "./styles/index.css";
 
@@ -16,8 +17,14 @@ const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       gcTime: 5 * 60_000,
-      retry: 2,
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30_000),
+      // A rate-limited CoinGecko call gets exactly one retry, after the hold-off it reports;
+      // retrying sooner only burns more of the per-minute budget.
+      retry: (failureCount, error) =>
+        failureCount < (error instanceof CoinGeckoRateLimitError ? 1 : 2),
+      retryDelay: (attempt, error) =>
+        error instanceof CoinGeckoRateLimitError
+          ? error.retryAfterMs + 500
+          : Math.min(1000 * 2 ** attempt, 30_000),
       refetchOnWindowFocus: false,
     },
   },

@@ -182,7 +182,7 @@ export function useTransactionHistory(): TransactionHistoryData {
   const { data: avaxPriceData } = useQuery({
     queryKey: queryKeys.avaxPrice(),
     queryFn: () => coingecko.getAvaxPrice(),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
   const avaxPrice = avaxPriceData?.price ?? 0;
 

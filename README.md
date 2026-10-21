@@ -29,6 +29,8 @@ npm run dev
 
 Requires `VITE_PRIVY_APP_ID` in `.env` (Privy app id).
 
+Optional: `VITE_COINGECKO_BASE=/api/coingecko` routes CoinGecko calls through a same-origin proxy. `vite dev` and `vite preview` forward that path upstream; on Netlify, `netlify/functions/coingecko.mts` serves it with a 60 s CDN cache so all visitors share one upstream request (set automatically in `netlify.toml`). Add `COINGECKO_API_KEY` in the Netlify dashboard to use a demo/pro key server-side.
+
 ```bash
 npm run lint   # strict type check
 npm run test   # unit tests (vitest)

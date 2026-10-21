@@ -28,7 +28,6 @@ export const queryKeys = {
   optionsOpenCost: (marketId: number, lower: string, upper: string, qty: string) =>
     ['optionsOpenCost', marketId, lower, upper, qty] as const,
   optionsUsdcBalance: (owner: string) => ['optionsUsdcBalance', owner] as const,
-  avaxChart: (days: number) => ['avaxChart', days] as const,
   binProbabilities: (marketId: number) => ['binProbabilities', marketId] as const,
   optionsSpendToQty: (marketId: number, lower: string, upper: string, spend: string, cap: string = 'nocap') =>
     ['optionsSpendToQty', marketId, lower, upper, spend, cap] as const,

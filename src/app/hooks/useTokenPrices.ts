@@ -77,7 +77,7 @@ export function useAvaxPrice(): UseAvaxPriceResult {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.avaxPrice(),
     queryFn: () => coingecko.getAvaxPrice(),
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   return {
@@ -163,7 +163,7 @@ export function useTokenChart(id: string | undefined, days: number) {
       return res.prices.map(([time, price]) => ({ time, price }));
     },
     enabled: !!id,
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   });
 
   return {

@@ -44,6 +44,3 @@ export function useAssetChartData(
     error: error ? (error instanceof Error ? error.message : 'Failed to fetch chart data') : null,
   };
 }
-
-/** @deprecated Use useAssetChartData instead */
-export { useAssetChartData as useAvaxChartData };
