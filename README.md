@@ -27,7 +27,13 @@ npm install
 npm run dev
 ```
 
-Requires `VITE_WALLETCONNECT_PROJECT_ID` environment variable.
+Requires `VITE_PRIVY_APP_ID` in `.env` (Privy app id).
+
+```bash
+npm run lint   # strict type check
+npm run test   # unit tests (vitest)
+npm run check  # both
+```
 
 ## Pages
 

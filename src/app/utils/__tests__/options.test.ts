@@ -110,9 +110,9 @@ describe('getMarketStateLabel', () => {
     expect(getMarketStateLabel(MarketState.FailedPendingManual)).toBe('Failed');
   });
 
-  it('distinguishes settled vs expired for finalized states', () => {
+  it('distinguishes settled vs still-finalizing for finalized states', () => {
     expect(getMarketStateLabel(MarketState.FinalizedPrimary, true)).toBe('Settled');
-    expect(getMarketStateLabel(MarketState.FinalizedPrimary, false)).toBe('Expired');
+    expect(getMarketStateLabel(MarketState.FinalizedPrimary, false)).toBe('Finalizing');
     expect(getMarketStateLabel(MarketState.FinalizedSecondary, true)).toBe('Settled');
   });
 

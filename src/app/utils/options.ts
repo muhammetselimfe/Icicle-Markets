@@ -49,8 +49,9 @@ export function generateTicks(min: bigint, max: bigint, spacing: bigint): bigint
 export function formatTickAsPrice(tick: bigint, divisor: number = 1): string {
   const price = tickToPrice(tick, divisor);
   // Dollar-based ticks (WTI, gold, BTC): no decimals, with commas
+  // Always en-US: prices use "." decimals and "," thousands regardless of browser locale.
   if (divisor === 1) {
-    return `$${price.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+    return `$${price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   }
-  return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
