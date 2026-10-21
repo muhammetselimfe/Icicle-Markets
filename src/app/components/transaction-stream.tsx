@@ -73,35 +73,32 @@ function TransactionCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={cn("font-medium", isNew ? "text-green-500" : "text-ice-text")}
-                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                className={cn("font-medium", isNew ? "text-green-500" : "text-ice-text", 'text-[14px]')}
               >
                 {formatAddress(tx.hash, 10, 6)}
               </span>
               {isNew && (
                 <span
                   className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-xs font-medium"
-                  style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   NEW
                 </span>
               )}
               <span className="text-ice-faint">•</span>
-              <span className="flex items-center gap-1 text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="flex items-center gap-1 text-ice-muted text-[13px]">
                 {formatAddress(tx.from, 6, 4)}
                 <ArrowRight className="w-3 h-3" />
                 {tx.to ? formatAddress(tx.to, 6, 4) : 'CREATE'}
               </span>
               <span className="text-ice-faint">•</span>
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-muted text-[13px]">
                 {formatWei(tx.value)}
               </span>
             </div>
           </div>
 
           <div
-            className={cn("flex items-center gap-1", isNew ? "text-green-500" : "text-ice-faint")}
-            style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+            className={cn("flex items-center gap-1", isNew ? "text-green-500" : "text-ice-faint", 'text-[13px]')}
           >
             <Clock className="w-3 h-3" />
             {getRelativeTime(tx.block_time)}
@@ -207,7 +204,7 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
   if (error && transactions.length === 0) {
     return (
       <div className="bg-red-500/10 p-5 rounded-xl">
-        <div className="flex items-center gap-2 text-red-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+        <div className="flex items-center gap-2 text-red-500 text-[14px]">
           <Activity className="w-4 h-4" />
           Error loading transactions: {error}
         </div>
@@ -258,7 +255,7 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <h3 className="text-ice-text font-medium text-[14px]">
             Live Transactions
           </h3>
           <div className={cn(
@@ -270,8 +267,7 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
               connected ? "bg-green-500" : "bg-yellow-500"
             )} />
             <span
-              className={connected ? "text-green-500" : "text-yellow-500"}
-              style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}
+              className={cn(connected ? "text-green-500" : "text-yellow-500", 'text-[12px]')}
             >
               {connected ? 'Live' : 'Connecting...'}
             </span>
@@ -280,11 +276,11 @@ export function TransactionStream({ initialTransactions = [], loading: initialLo
 
         <div className="flex items-center gap-3">
           <div className="px-2.5 py-1 bg-ice-surface2 rounded-lg">
-            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <span className="text-ice-muted text-[13px]">
               ~{tps.toFixed(1)} txs/sec
             </span>
           </div>
-          <div className="text-ice-faint" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+          <div className="text-ice-faint text-[12px]">
             Real-time feed
           </div>
         </div>

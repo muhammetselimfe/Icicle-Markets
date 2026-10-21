@@ -177,6 +177,7 @@
   --color-ice-faint: var(--ice-faint);
   --color-ice-up: var(--ice-up);
   --color-ice-down: var(--ice-down);
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, monospace;
 }
 

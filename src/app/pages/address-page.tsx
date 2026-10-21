@@ -4,7 +4,7 @@ import { User, ArrowLeft, Copy, Check, ExternalLink, Clock, ArrowRight, Activity
 import { api } from '@/app/services/api';
 import { formatAddress, formatWei } from '@/app/utils/formatters';
 import { getRelativeTime } from '@/app/utils/time';
-import { getAddressName, getAddressInfo } from '@/app/data/known-addresses';
+import { getAddressInfo } from '@/app/data/known-addresses';
 import type { Transaction, NativeBalance } from '@/app/types/api';
 
 function Skeleton({ className = '' }: { className?: string }) {
@@ -107,15 +107,15 @@ export function AddressPage() {
           className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
+          <span className="text-[14px]">Back</span>
         </button>
 
         <div className="bg-red-500/10 p-8 rounded-xl text-center">
           <User className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-red-500 font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+          <h1 className="text-red-500 font-medium mb-2 text-[16px]">
             Address Not Found
           </h1>
-          <p className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <p className="text-ice-muted text-[14px]">
             {error}
           </p>
         </div>
@@ -131,7 +131,7 @@ export function AddressPage() {
         className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
+        <span className="text-[14px]">Back</span>
       </button>
 
       {/* Main container */}
@@ -144,7 +144,7 @@ export function AddressPage() {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                <h1 className="text-ice-text font-medium text-[16px]">
                   {addressLabel || 'Address'}
                 </h1>
                 {addressType && (
@@ -155,14 +155,13 @@ export function AddressPage() {
                       addressType === 'protocol' ? 'bg-ice-line/[0.08] text-ice-text' :
                       'bg-ice-line/[0.08] text-ice-muted'
                     }`}
-                    style={{ fontFamily: "Inter, sans-serif" }}
                   >
                     {addressType.charAt(0).toUpperCase() + addressType.slice(1)}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <code className="text-ice-text break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <code className="text-ice-text break-all text-[14px]">
                   {address}
                 </code>
                 <button
@@ -182,26 +181,26 @@ export function AddressPage() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="bg-ice-surface2 p-4 rounded-lg">
-              <div className="text-ice-muted mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <div className="text-ice-muted mb-2 text-[13px]">
                 Total Transactions
               </div>
-              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-ice-text font-medium text-[18px]">
                 {stats.totalTxs}
               </div>
             </div>
             <div className="bg-ice-surface2 p-4 rounded-lg">
-              <div className="text-ice-muted mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <div className="text-ice-muted mb-2 text-[13px]">
                 Sent
               </div>
-              <div className="text-red-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-red-500 font-medium text-[18px]">
                 {stats.sent}
               </div>
             </div>
             <div className="bg-ice-surface2 p-4 rounded-lg">
-              <div className="text-ice-muted mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <div className="text-ice-muted mb-2 text-[13px]">
                 Received
               </div>
-              <div className="text-green-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-green-500 font-medium text-[18px]">
                 {stats.received}
               </div>
             </div>
@@ -215,7 +214,7 @@ export function AddressPage() {
             className="flex items-center justify-center gap-3 p-4 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
           >
             <ExternalLink className="w-4 h-4 text-ice-muted" />
-            <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <span className="text-ice-muted font-medium text-[14px]">
               View on Snowtrace
             </span>
           </a>
@@ -225,7 +224,7 @@ export function AddressPage() {
       {/* Transactions List */}
       <div className="bg-ice-surface rounded-xl overflow-hidden">
         <div className="p-4 border-b border-ice-line/15">
-          <h2 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <h2 className="text-ice-text font-medium text-[14px]">
             Transactions
           </h2>
         </div>
@@ -233,7 +232,7 @@ export function AddressPage() {
         {transactions.length === 0 ? (
           <div className="p-8 text-center">
             <Activity className="w-12 h-12 text-ice-faint mx-auto mb-4" />
-            <p className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <p className="text-ice-muted text-[14px]">
               No transactions found for this address
             </p>
           </div>
@@ -259,16 +258,16 @@ export function AddressPage() {
                       {/* Transaction info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                          <span className="text-ice-text font-medium text-[14px]">
                             {formatAddress(tx.hash, 12, 8)}
                           </span>
                           <span className={`px-2 py-0.5 text-xs rounded font-medium ${
                             isSent ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'
-                          }`} style={{ fontFamily: "Inter, sans-serif" }}>
+                          }`}>
                             {isSent ? 'OUT' : 'IN'}
                           </span>
                         </div>
-                        <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                        <div className="text-ice-muted text-[13px]">
                           {isSent ? (
                             <>To: {tx.to ? formatAddress(tx.to, 8, 6) : 'Contract Creation'}</>
                           ) : (
@@ -279,10 +278,10 @@ export function AddressPage() {
 
                       {/* Value */}
                       <div className="text-right">
-                        <div className={`font-medium ${isSent ? 'text-red-500' : 'text-green-500'}`} style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                        <div className={`font-medium ${isSent ? 'text-red-500' : 'text-green-500'} text-[14px]`}>
                           {isSent ? '-' : '+'}{formatWei(tx.value)}
                         </div>
-                        <div className="flex items-center gap-1 text-ice-faint" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                        <div className="flex items-center gap-1 text-ice-faint text-[12px]">
                           <Clock className="w-3 h-3" />
                           {getRelativeTime(tx.block_time)}
                         </div>
@@ -301,7 +300,7 @@ export function AddressPage() {
                   disabled={loading}
                   className="w-full p-3 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors disabled:opacity-50"
                 >
-                  <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                  <span className="text-ice-muted font-medium text-[14px]">
                     {loading ? 'Loading...' : 'Load More'}
                   </span>
                 </button>

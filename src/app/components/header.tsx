@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAccount, useChainId, useDisconnect } from 'wagmi';
 import { usePrivy, useLogin } from '@privy-io/react-auth';
-import { Search, ChevronDown, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound, Network, Sun, Moon } from 'lucide-react';
+import { Search, LogOut, Loader2, Menu, X, Copy, Check, Wallet, CircleUserRound, Network, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { cn } from '@/app/components/ui/utils';
 import { Input } from '@/app/components/ui/input';
@@ -205,15 +205,13 @@ export function Header() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Search for transaction, address, block..."
-                  className="pl-12 pr-4 py-4 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '15px' }}
+                  className="pl-12 pr-4 py-4 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0 text-[15px]"
                   disabled={searching}
                 />
               </div>
               {searchError && (
                 <div
-                  className="absolute top-full left-0 right-0 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+                  className="absolute top-full left-0 right-0 mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-[13px]"
                 >
                   {searchError}
                 </div>
@@ -248,10 +246,10 @@ export function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[200px] bg-ice-surface border-ice-line/15">
                   <div className="px-3 py-2 border-b border-ice-line/15">
-                    <p className="text-white font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                    <p className="text-white font-medium text-[13px]">
                       {address?.slice(0, 6)}...{address?.slice(-4)}
                     </p>
-                    <p className="text-slate-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+                    <p className="text-slate-500 text-[12px]">
                       {networkLabel}
                     </p>
                   </div>
@@ -276,7 +274,7 @@ export function Header() {
                 className="px-5 py-2.5 rounded-xl flex items-center gap-2 transition-transform hover:-translate-y-px"
                 style={{ background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)', boxShadow: '0 2px 16px rgba(139,228,255,0.3)' }}
               >
-                <span className="font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: '#06223a' }}>
+                <span className="font-semibold text-[14px]" style={{ color: '#06223a' }}>
                   Sign In
                 </span>
               </button>
@@ -324,15 +322,13 @@ export function Header() {
                     }
                   }}
                   placeholder="Search..."
-                  className="pl-10 pr-4 py-3 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                  className="pl-10 pr-4 py-3 border-0 bg-transparent text-white placeholder:text-slate-500 focus-visible:ring-0 text-[14px]"
                   disabled={searching}
                 />
               </div>
               {searchError && (
                 <div
-                  className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg"
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+                  className="mt-2 px-3 py-2 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-[13px]"
                 >
                   {searchError}
                 </div>
@@ -347,8 +343,7 @@ export function Header() {
                   <div className="bg-ice-surface2 px-4 py-3 rounded-lg flex items-center gap-2">
                     <div className={cn("w-2 h-2 rounded-full", networkDotColor)} />
                     <span
-                      className="text-white font-medium"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-white font-medium text-[14px]"
                     >
                       {address?.slice(0, 6)}...{address?.slice(-4)}
                     </span>
@@ -364,8 +359,7 @@ export function Header() {
                   >
                     <Wallet className="w-4 h-4 text-slate-400" />
                     <span
-                      className="text-slate-300"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-slate-300 text-[14px]"
                     >
                       Portfolio
                     </span>
@@ -378,8 +372,7 @@ export function Header() {
                   >
                     {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
                     <span
-                      className="text-slate-300"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-slate-300 text-[14px]"
                     >
                       {copied ? 'Copied!' : 'Copy Address'}
                     </span>
@@ -395,8 +388,7 @@ export function Header() {
                   >
                     <Network className="w-4 h-4 text-slate-400" />
                     <span
-                      className="text-slate-300"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-slate-300 text-[14px]"
                     >
                       Explorer
                     </span>
@@ -412,8 +404,7 @@ export function Header() {
                   >
                     <LogOut className="w-4 h-4 text-red-500" />
                     <span
-                      className="text-red-500"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-red-500 text-[14px]"
                     >
                       Sign Out
                     </span>
@@ -429,8 +420,7 @@ export function Header() {
                     className="w-full bg-ice-line/[0.08] px-5 py-3 hover:bg-ice-line/[0.1] transition-all rounded-lg flex items-center justify-center gap-2"
                   >
                     <span
-                      className="text-white font-medium"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-white font-medium text-[14px]"
                     >
                       Sign In
                     </span>
@@ -444,8 +434,7 @@ export function Header() {
                   >
                     <Network className="w-4 h-4 text-slate-400" />
                     <span
-                      className="text-slate-300"
-                      style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      className="text-slate-300 text-[14px]"
                     >
                       Explorer
                     </span>

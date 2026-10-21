@@ -85,15 +85,15 @@ export function BlockPage() {
           className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
+          <span className="text-[14px]">Back</span>
         </button>
 
         <div className="bg-red-500/10 p-8 rounded-xl text-center">
           <Box className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-red-500 font-medium mb-2" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+          <h1 className="text-red-500 font-medium mb-2 text-[16px]">
             Block Not Found
           </h1>
-          <p className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <p className="text-ice-muted text-[14px]">
             {error || `Block #${blockNumber} could not be found`}
           </p>
         </div>
@@ -113,7 +113,7 @@ export function BlockPage() {
         className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
+        <span className="text-[14px]">Back</span>
       </button>
 
       {/* Main container */}
@@ -126,10 +126,10 @@ export function BlockPage() {
                 <Box className="w-7 h-7 text-ice-muted" />
               </div>
               <div>
-                <h1 className="text-ice-text font-medium mb-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+                <h1 className="text-ice-text font-medium mb-1 text-[18px]">
                   Block #{block.block_number.toLocaleString()}
                 </h1>
-                <div className="flex items-center gap-2 text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <div className="flex items-center gap-2 text-ice-muted text-[14px]">
                   <Clock className="w-4 h-4" />
                   {formatDate(block.block_time)}
                   <span className="text-green-500">({getRelativeTime(block.block_time)})</span>
@@ -144,13 +144,13 @@ export function BlockPage() {
                 className="flex items-center gap-1 px-4 py-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
                 <ChevronLeft className="w-4 h-4 text-ice-muted" />
-                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Prev</span>
+                <span className="text-ice-muted text-[14px]">Prev</span>
               </Link>
               <Link
                 to={`/block/${nextBlock}`}
                 className="flex items-center gap-1 px-4 py-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
               >
-                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Next</span>
+                <span className="text-ice-muted text-[14px]">Next</span>
                 <ChevronRight className="w-4 h-4 text-ice-muted" />
               </Link>
             </div>
@@ -160,12 +160,12 @@ export function BlockPage() {
           <div className="bg-ice-surface2 p-4 mb-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Hash className="w-4 h-4 text-ice-muted" />
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-muted text-[13px]">
                 Block Hash
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <code className="flex-1 text-ice-text break-all" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <code className="flex-1 text-ice-text break-all text-[14px]">
                 {block.hash}
               </code>
               <button
@@ -185,15 +185,14 @@ export function BlockPage() {
           <div className="bg-ice-surface2 p-4 mb-4 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Hash className="w-4 h-4 text-ice-muted" />
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-muted text-[13px]">
                 Parent Hash
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 to={`/block/${prevBlock}`}
-                className="flex-1 text-ice-text break-all hover:text-green-500 transition-colors"
-                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                className="flex-1 text-ice-text break-all hover:text-green-500 transition-colors text-[14px]"
               >
                 {block.parent_hash}
               </Link>
@@ -214,15 +213,14 @@ export function BlockPage() {
           <div className="bg-ice-surface2 p-4 mb-6 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <Cpu className="w-4 h-4 text-ice-muted" />
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-muted text-[13px]">
                 Validated By
               </span>
             </div>
             <div className="flex items-center gap-3">
               <Link
                 to={`/address/${block.miner}`}
-                className="flex-1 text-ice-text break-all hover:text-green-500 transition-colors"
-                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                className="flex-1 text-ice-text break-all hover:text-green-500 transition-colors text-[14px]"
               >
                 {block.miner}
               </Link>
@@ -251,13 +249,13 @@ export function BlockPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4 text-ice-muted" />
-                  <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                  <span className="text-ice-muted text-[13px]">
                     Transactions
                   </span>
                 </div>
                 <ExternalLink className="w-3 h-3 text-ice-faint" />
               </div>
-              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-ice-text font-medium text-[18px]">
                 {block.tx_count ?? 0}
               </div>
             </a>
@@ -266,11 +264,11 @@ export function BlockPage() {
             <div className="bg-ice-surface2 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Database className="w-4 h-4 text-ice-muted" />
-                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <span className="text-ice-muted text-[13px]">
                   Block Size
                 </span>
               </div>
-              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '18px' }}>
+              <div className="text-ice-text font-medium text-[18px]">
                 {(block.size / 1024).toFixed(2)} KB
               </div>
             </div>
@@ -279,11 +277,11 @@ export function BlockPage() {
             <div className="bg-ice-surface2 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Fuel className="w-4 h-4 text-ice-muted" />
-                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <span className="text-ice-muted text-[13px]">
                   Gas Used
                 </span>
               </div>
-              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+              <div className="text-ice-text font-medium text-[16px]">
                 {formatGas(block.gas_used)}
               </div>
               <div className="mt-3 h-2 bg-ice-line/[0.08] rounded-full overflow-hidden">
@@ -292,7 +290,7 @@ export function BlockPage() {
                   style={{ width: `${Math.min(parseFloat(gasPercentage), 100)}%` }}
                 />
               </div>
-              <div className="text-ice-faint mt-1" style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}>
+              <div className="text-ice-faint mt-1 text-[12px]">
                 {gasPercentage}% of {formatGas(block.gas_limit)}
               </div>
             </div>
@@ -301,11 +299,11 @@ export function BlockPage() {
             <div className="bg-ice-surface2 p-4 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
                 <Fuel className="w-4 h-4 text-ice-muted" />
-                <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+                <span className="text-ice-muted text-[13px]">
                   Base Fee
                 </span>
               </div>
-              <div className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+              <div className="text-ice-text font-medium text-[16px]">
                 {(block.base_fee_per_gas / 1e9).toFixed(2)} GWEI
               </div>
             </div>
@@ -319,7 +317,7 @@ export function BlockPage() {
             className="flex items-center justify-center gap-3 p-4 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
           >
             <ExternalLink className="w-4 h-4 text-ice-muted" />
-            <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <span className="text-ice-muted font-medium text-[14px]">
               View on Snowtrace
             </span>
           </a>

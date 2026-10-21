@@ -6,6 +6,7 @@ import { api } from '@/app/services/api';
 import { getRelativeTime } from '@/app/utils/time';
 import { getAddressName, isProtocol, isToken } from '@/app/data/known-addresses';
 import type { Transaction } from '@/app/types/api';
+import { cn } from '@/app/components/ui/utils';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-ice-line/[0.08] rounded-lg ${className}`} />;
@@ -87,11 +88,11 @@ export function TransactionPage() {
           className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
+          <span className="text-[14px]">Back</span>
         </button>
         <div className="bg-red-500/10 p-8 rounded-xl text-center">
           <XCircle className="w-10 h-10 text-red-500 mx-auto mb-3" />
-          <p className="text-red-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <p className="text-red-500 text-[14px]">
             {error || 'Transaction not found'}
           </p>
         </div>
@@ -148,7 +149,7 @@ export function TransactionPage() {
         className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Back</span>
+        <span className="text-[14px]">Back</span>
       </button>
 
       <div className="bg-ice-surface rounded-xl overflow-hidden">
@@ -156,11 +157,11 @@ export function TransactionPage() {
         <div className={`px-5 py-4 flex items-center justify-between ${tx.success ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
           <div className="flex items-center gap-2">
             {tx.success ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
-            <span className={tx.success ? 'text-green-500 font-medium' : 'text-red-500 font-medium'} style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <span className={cn(tx.success ? 'text-green-500 font-medium' : 'text-red-500 font-medium', 'text-[14px]')}>
               {tx.success ? 'Success' : 'Failed'}
             </span>
           </div>
-          <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <span className="text-ice-muted text-[14px]">
             {getRelativeTime(tx.block_time)}
           </span>
         </div>
@@ -170,14 +171,14 @@ export function TransactionPage() {
           {isSwap && (
             <div className="bg-ice-surface2 p-5 mb-5 rounded-lg">
               <div className="text-center mb-5">
-                <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Swap</span>
+                <span className="text-ice-text font-medium text-[14px]">Swap</span>
               </div>
               <div className="flex items-center justify-center gap-6">
                 <div className="text-center">
-                  <div className="text-red-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '24px' }}>
+                  <div className="text-red-500 font-medium text-[24px]">
                     {userSentAvax > 0 ? userSentAvax.toFixed(4) : userSentToken ? formatTokenAmount(userSentToken.amount, userSentToken.decimals) : '0'}
                   </div>
-                  <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                  <div className="text-ice-muted text-[14px]">
                     {userSentAvax > 0 ? 'AVAX' : userSentToken?.symbol || ''}
                   </div>
                 </div>
@@ -185,10 +186,10 @@ export function TransactionPage() {
                 <ArrowRight className="w-8 h-8 text-ice-faint" />
 
                 <div className="text-center">
-                  <div className="text-green-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '24px' }}>
+                  <div className="text-green-500 font-medium text-[24px]">
                     {userReceivedAvax > 0 ? userReceivedAvax.toFixed(4) : userReceivedToken ? formatTokenAmount(userReceivedToken.amount, userReceivedToken.decimals) : '0'}
                   </div>
-                  <div className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                  <div className="text-ice-muted text-[14px]">
                     {userReceivedAvax > 0 ? 'AVAX' : userReceivedToken?.symbol || ''}
                   </div>
                 </div>
@@ -199,10 +200,10 @@ export function TransactionPage() {
           {isSend && (
             <div className="bg-red-500/5 p-6 mb-5 rounded-lg">
               <div className="text-center mb-4">
-                <span className="text-red-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Send</span>
+                <span className="text-red-500 font-medium text-[14px]">Send</span>
               </div>
               <div className="text-center">
-                <div className="text-red-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '24px' }}>
+                <div className="text-red-500 font-medium text-[24px]">
                   -{userSentAvax > 0 ? userSentAvax.toFixed(4) : userSentToken ? formatTokenAmount(userSentToken.amount, userSentToken.decimals) : '0'} {userSentAvax > 0 ? 'AVAX' : userSentToken?.symbol}
                 </div>
               </div>
@@ -212,10 +213,10 @@ export function TransactionPage() {
           {isReceive && (
             <div className="bg-green-500/5 p-6 mb-5 rounded-lg">
               <div className="text-center mb-4">
-                <span className="text-green-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Receive</span>
+                <span className="text-green-500 font-medium text-[14px]">Receive</span>
               </div>
               <div className="text-center">
-                <div className="text-green-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '24px' }}>
+                <div className="text-green-500 font-medium text-[24px]">
                   +{userReceivedAvax > 0 ? userReceivedAvax.toFixed(4) : userReceivedToken ? formatTokenAmount(userReceivedToken.amount, userReceivedToken.decimals) : '0'} {userReceivedAvax > 0 ? 'AVAX' : userReceivedToken?.symbol}
                 </div>
               </div>
@@ -225,13 +226,13 @@ export function TransactionPage() {
           {isApprove && tx.approvals && tx.approvals.map((approval, i) => (
             <div key={i} className="bg-yellow-500/5 p-6 mb-5 rounded-lg">
               <div className="text-center mb-4">
-                <span className="text-yellow-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Approve</span>
+                <span className="text-yellow-500 font-medium text-[14px]">Approve</span>
               </div>
               <div className="text-center">
-                <div className="text-yellow-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '24px' }}>
+                <div className="text-yellow-500 font-medium text-[24px]">
                   {approval.is_unlimited ? 'Unlimited' : formatTokenAmount(approval.amount, approval.decimals)} {approval.symbol || 'TOKEN'}
                 </div>
-                <div className="text-ice-muted mt-3" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <div className="text-ice-muted mt-3 text-[14px]">
                   for {getProtocolName(approval.spender) || `${approval.spender.slice(0, 8)}...${approval.spender.slice(-6)}`}
                 </div>
               </div>
@@ -241,10 +242,10 @@ export function TransactionPage() {
           {isContract && (
             <div className="bg-ice-surface2 p-6 mb-5 rounded-lg">
               <div className="text-center mb-4">
-                <span className="text-ice-muted font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Contract</span>
+                <span className="text-ice-muted font-medium text-[14px]">Contract</span>
               </div>
               <div className="text-center">
-                <div className="text-ice-text" style={{ fontFamily: "Inter, sans-serif", fontSize: '16px' }}>
+                <div className="text-ice-text text-[16px]">
                   Contract Interaction
                 </div>
               </div>
@@ -253,41 +254,41 @@ export function TransactionPage() {
 
           {/* Fee */}
           <div className="flex items-center justify-between py-4 border-b border-ice-line/15">
-            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Fee</span>
-            <span className="text-yellow-500 font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>{txFee.toFixed(6)} AVAX</span>
+            <span className="text-ice-muted text-[14px]">Fee</span>
+            <span className="text-yellow-500 font-medium text-[14px]">{txFee.toFixed(6)} AVAX</span>
           </div>
 
           {/* Block */}
           <div className="flex items-center justify-between py-4 border-b border-ice-line/15">
-            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Block</span>
-            <Link to={`/block/${tx.block_number}`} className="text-ice-text hover:text-green-500 transition-colors font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <span className="text-ice-muted text-[14px]">Block</span>
+            <Link to={`/block/${tx.block_number}`} className="text-ice-text hover:text-green-500 transition-colors font-medium text-[14px]">
               #{tx.block_number.toLocaleString()}
             </Link>
           </div>
 
           {/* From/To */}
           <div className="flex items-center justify-between py-4 border-b border-ice-line/15">
-            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>From</span>
-            <Link to={`/address/${tx.from}`} className="text-ice-text hover:text-green-500 transition-colors font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+            <span className="text-ice-muted text-[14px]">From</span>
+            <Link to={`/address/${tx.from}`} className="text-ice-text hover:text-green-500 transition-colors font-medium text-[14px]">
               {getAddressLabel(tx.from) || `${tx.from.slice(0, 8)}...${tx.from.slice(-6)}`}
             </Link>
           </div>
 
           {tx.to && (
             <div className="flex items-center justify-between py-4 border-b border-ice-line/15">
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <span className="text-ice-muted text-[14px]">
                 {getProtocolName(tx.to) ? 'Protocol' : getTokenName(tx.to) ? 'Token' : 'To'}
               </span>
               {getProtocolName(tx.to) ? (
-                <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <span className="text-ice-text font-medium text-[14px]">
                   {getProtocolName(tx.to)}
                 </span>
               ) : getTokenName(tx.to) ? (
-                <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <span className="text-ice-text font-medium text-[14px]">
                   {getTokenName(tx.to)}
                 </span>
               ) : (
-                <Link to={`/address/${tx.to}`} className="text-ice-text hover:text-green-500 transition-colors font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                <Link to={`/address/${tx.to}`} className="text-ice-text hover:text-green-500 transition-colors font-medium text-[14px]">
                   {getAddressLabel(tx.to) || `${tx.to.slice(0, 8)}...${tx.to.slice(-6)}`}
                 </Link>
               )}
@@ -296,9 +297,9 @@ export function TransactionPage() {
 
           {/* Hash */}
           <div className="flex items-center justify-between py-4">
-            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>Hash</span>
+            <span className="text-ice-muted text-[14px]">Hash</span>
             <div className="flex items-center gap-3">
-              <span className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+              <span className="text-ice-text font-medium text-[14px]">
                 {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
               </span>
               <button onClick={copyHash} className="p-1.5 rounded-lg hover:bg-ice-line/[0.08] transition-colors">
@@ -312,8 +313,7 @@ export function TransactionPage() {
             <div className="mt-5">
               <button
                 onClick={() => setShowDetails(!showDetails)}
-                className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors"
-                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors text-[14px]"
               >
                 {showDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 {showDetails ? 'Hide' : 'Show'} {tx.token_transfers.length} token transfers
@@ -322,7 +322,7 @@ export function TransactionPage() {
               {showDetails && (
                 <div className="mt-4 space-y-3 p-4 bg-ice-surface2 rounded-lg">
                   {tx.token_transfers.map((t, i) => (
-                    <div key={i} className="flex items-center gap-3 text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+                    <div key={i} className="flex items-center gap-3 text-ice-muted text-[14px]">
                       <span className="text-ice-text">{formatTokenAmount(t.value, t.decimals)} {t.symbol}</span>
                       <span className="text-ice-faint">→</span>
                       <span>{t.to.slice(0, 6)}...{t.to.slice(-4)}</span>

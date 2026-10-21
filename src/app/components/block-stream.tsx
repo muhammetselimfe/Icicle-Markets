@@ -67,38 +67,35 @@ function BlockCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={cn("font-medium", isNew ? "text-green-500" : "text-ice-text")}
-                style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                className={cn("font-medium", isNew ? "text-green-500" : "text-ice-text", 'text-[14px]')}
               >
                 #{block.block_number.toLocaleString()}
               </span>
               {isNew && (
                 <span
                   className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-xs font-medium"
-                  style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   NEW
                 </span>
               )}
               <span className="text-ice-faint">•</span>
-              <span className="flex items-center gap-1 text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="flex items-center gap-1 text-ice-muted text-[13px]">
                 <Zap className="w-3 h-3" />
                 {block.tx_count ?? 0} txs
               </span>
               <span className="text-ice-faint">•</span>
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-muted text-[13px]">
                 {formatGas(block.gas_used)} gas
               </span>
               <span className="text-ice-faint">•</span>
-              <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-ice-muted text-[13px]">
                 {(block.size / 1024).toFixed(1)} KB
               </span>
             </div>
           </div>
 
           <div
-            className={cn("flex items-center gap-1", isNew ? "text-green-500" : "text-ice-faint")}
-            style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}
+            className={cn("flex items-center gap-1", isNew ? "text-green-500" : "text-ice-faint", 'text-[13px]')}
           >
             <Clock className="w-3 h-3" />
             {getRelativeTime(block.block_time)}
@@ -198,7 +195,7 @@ export function BlockStream({ blocks, loading, error, lastError, onClearError, c
   if (error && blocks.length === 0) {
     return (
       <div className="bg-red-500/10 p-5 rounded-xl">
-        <div className="flex items-center gap-2 text-red-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+        <div className="flex items-center gap-2 text-red-500 text-[14px]">
           <Box className="w-4 h-4" />
           Error loading blocks: {error}
         </div>
@@ -213,7 +210,7 @@ export function BlockStream({ blocks, loading, error, lastError, onClearError, c
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-red-500" />
-              <span className="text-red-500" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+              <span className="text-red-500 text-[13px]">
                 Error @ {formatErrorTime(lastError.timestamp)}: {lastError.message}
               </span>
             </div>
@@ -270,7 +267,7 @@ export function BlockStream({ blocks, loading, error, lastError, onClearError, c
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h3 className="text-ice-text font-medium" style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}>
+          <h3 className="text-ice-text font-medium text-[14px]">
             Live Blocks
           </h3>
           <div className={cn(
@@ -282,8 +279,7 @@ export function BlockStream({ blocks, loading, error, lastError, onClearError, c
               connected ? "bg-green-500" : "bg-yellow-500"
             )} />
             <span
-              className={connected ? "text-green-500" : "text-yellow-500"}
-              style={{ fontFamily: "Inter, sans-serif", fontSize: '12px' }}
+              className={cn(connected ? "text-green-500" : "text-yellow-500", 'text-[12px]')}
             >
               {connected ? 'Live' : 'Connecting...'}
             </span>
@@ -292,7 +288,7 @@ export function BlockStream({ blocks, loading, error, lastError, onClearError, c
 
         <div className="flex items-center gap-3">
           <div className="px-2.5 py-1 bg-ice-surface2 rounded-lg">
-            <span className="text-ice-muted" style={{ fontFamily: "Inter, sans-serif", fontSize: '13px' }}>
+            <span className="text-ice-muted text-[13px]">
               ~{blocksPerSecond.toFixed(1)} blocks/sec
             </span>
           </div>

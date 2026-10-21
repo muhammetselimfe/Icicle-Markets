@@ -30,9 +30,7 @@ export function Navigation({ activeTab, onTabChange }: NavigationProps) {
                     "flex items-center gap-2 px-3 py-2 md:px-5 md:py-2.5 rounded-lg transition-all font-medium min-h-[44px]",
                     isActive
                       ? "bg-ice-accent/10 text-ice-accent"
-                      : "text-ice-muted hover:text-ice-text"
-                  )}
-                  style={{ fontFamily: "Inter, sans-serif", fontSize: '14px' }}
+                      : "text-ice-muted hover:text-ice-text", 'text-[14px]')}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="hidden sm:inline">{item.label}</span>
