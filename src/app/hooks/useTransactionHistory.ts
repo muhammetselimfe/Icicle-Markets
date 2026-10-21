@@ -1,13 +1,25 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
 import { formatUnits } from 'viem';
 import { api } from '@/app/services/api';
-import { coingecko } from '@/app/services/coingecko';
+import {
+  classifyTransaction,
+  collectTransferLegs,
+  describeCounterparty,
+  formatCounterparty,
+  formatLegAmount,
+  getProtocol,
+  intentTitle,
+  methodLabel,
+  NATIVE_AVAX_ADDRESS,
+  type TransactionType,
+} from '@/app/utils/transaction-history';
+import { useSwapPrices } from './useSwapPrices';
 import { queryKeys } from './queryKeys';
 import type { Transaction as ApiTransaction } from '@/app/types/api';
 
-export type TransactionType = 'swap' | 'send' | 'receive' | 'approve' | 'stake' | 'unstake' | 'contract';
+export type { TransactionType };
 export type TransactionStatus = 'success' | 'failed' | 'pending';
 
 export interface TokenTransfer {
@@ -27,6 +39,13 @@ export interface Transaction {
     name: string;
     logoUrl?: string;
   };
+  /** Title to show in place of the generic one for the type, when the indexer gave a more specific one ("Borrowed"). */
+  title: string | null;
+  /** Who the wallet dealt with, ready to print: "via Yield Yak", "to Binance". */
+  context: string;
+  /** Called function in words ("Swap no split"); null for plain transfers. */
+  method: string | null;
+  /** Outgoing legs first, then incoming. */
   transfers: TokenTransfer[];
   gasFee: {
     amount: string;
@@ -46,145 +65,73 @@ export interface TransactionHistoryData {
   refetch: () => void;
 }
 
-const AVAX_LOGO = 'https://coin-images.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png';
-
-// Known protocol contracts on Avalanche
-interface ProtocolInfo {
-  name: string;
-  logoUrl?: string;
-  isSwap: boolean;
-}
-
-const KNOWN_PROTOCOLS: Record<string, ProtocolInfo> = {
-  '0xc4729e56b831d74bbc18797e0e17a295fa77488c': {
-    name: 'Yield Yak',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x59414b3089ce2AF0010e7523Dea7E2b35d776ec7/logo.png',
-    isSwap: true,
-  },
-  '0xb4315e873dbcf96ffd0acd8ea43f689d8c20fb30': {
-    name: 'Trader Joe',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd/logo.png',
-    isSwap: true,
-  },
-  '0xe3ffc583dc176575eea7fd9df2a7c65f7e23f4c3': {
-    name: 'Trader Joe',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd/logo.png',
-    isSwap: true,
-  },
-  '0x60ae616a2155ee3d9a68541ba4544862310933d4': {
-    name: 'Trader Joe',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd/logo.png',
-    isSwap: true,
-  },
-  '0xe54ca86531e17ef3616d22ca28b0d458b6c89106': {
-    name: 'Pangolin',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x60781C2586D68229fde47564546784ab3fACA982/logo.png',
-    isSwap: true,
-  },
-  '0x1b02da8cb0d097eb8d57a175b88c7d8b47997506': {
-    name: 'SushiSwap',
-    logoUrl: 'https://cryptologos.cc/logos/sushiswap-sushi-logo.png',
-    isSwap: true,
-  },
-  '0xdef171fe48cf0115b1d80b88dc8eab59176fee57': {
-    name: 'ParaSwap',
-    logoUrl: 'https://cdn.paraswap.io/brand/PSP_500x500.png',
-    isSwap: true,
-  },
-  '0x1111111254eeb25477b68fb85ed929f73a960582': {
-    name: '1inch',
-    logoUrl: 'https://cryptologos.cc/logos/1inch-1inch-logo.png',
-    isSwap: true,
-  },
-  '0x2b2c81e08f1af8835a78bb2a90ae924ace0ea4be': {
-    name: 'BENQI',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x8729438EB15e2C8B576fCc6AeCdA6A148776C0F5/logo.png',
-    isSwap: false,
-  },
-  '0xa25eaf2906fa1a3a13edac9b9657108af7b703e3': {
-    name: 'GoGoPool',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0xA25EaF2906FA1a3a13EdAc9B9657108Af7B703e3/logo.png',
-    isSwap: false,
-  },
-  '0x5f719c2f1095f7b9fc68a68e35b51194f4b6abe8': {
-    name: 'GMX',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x62edc0692BD897D2295872a9FFCac5425011c661/logo.png',
-    isSwap: true,
-  },
-  '0x45a01e4e04f14f7a4a6702c74187c5f6222033cd': {
-    name: 'Stargate',
-    logoUrl: 'https://cryptologos.cc/logos/stargate-finance-stg-logo.png',
-    isSwap: false,
-  },
-  '0x18556da13313f3532c54711497a8fedac273220e': {
-    name: 'LFJ',
-    logoUrl: 'https://raw.githubusercontent.com/traderjoe-xyz/joe-tokenlists/main/logos/0x6e84a6216eA6dACC71eE8E6b0a5B7322EEbC0fDd/logo.png',
-    isSwap: true,
-  },
-};
-
-// Known token contracts (for approve detection)
-const KNOWN_TOKENS: Record<string, string> = {
-  '0xb97ef9ef8734c71904d8002f8b6bc66dd9c48a6e': 'USDC',
-  '0x9702230a8ea53601f5cd2dc00fdbc13d4df4a8c7': 'USDT',
-  '0xb31f66aa3c1e785363f0875a1b74e27b85fd66c7': 'WAVAX',
-  '0x49d5c2bdffac6ce2bfdb6640f4f80f226bc10bab': 'WETH.e',
-  '0x152b9d0fdc40c096757f570a51e494bd4b943e50': 'BTC.b',
-  '0x6e84a6216ea6dacc71ee8e6b0a5b7322eebc0fdd': 'JOE',
-  '0x2b2c81e08f1af8835a78bb2a90ae924ace0ea4be': 'sAVAX',
-  '0xa25eaf2906fa1a3a13edac9b9657108af7b703e3': 'ggAVAX',
-  '0x420fca0121dc28039145009570975747295f2329': 'COQ',
-  '0xd586e7f844cea2f87f50152665bcbc2c279d8d70': 'DAI.e',
-  '0xa7d7079b0fead91f3e65f86e8915cb59c1a4c664': 'USDC.e',
-};
-
-function getProtocol(toAddress: string | null): ProtocolInfo | null {
-  if (!toAddress) return null;
-  return KNOWN_PROTOCOLS[toAddress.toLowerCase()] || null;
-}
-
-function isKnownToken(address: string | null): boolean {
-  if (!address) return false;
-  return !!KNOWN_TOKENS[address.toLowerCase()];
-}
-
-function getTransactionType(tx: ApiTransaction, userAddress: string): TransactionType {
-  const from = tx.from.toLowerCase();
-  const to = tx.to?.toLowerCase();
-  const user = userAddress.toLowerCase();
-
-  const protocol = to ? getProtocol(to) : null;
-
-  if (protocol?.isSwap) return 'swap';
-  if (tx.value === '0' && to && isKnownToken(to)) return 'approve';
-  if (tx.value === '0') return 'contract';
-  if (from === user) return 'send';
-  if (to === user) return 'receive';
-  return 'contract';
-}
-
-function formatBalance(value: string, decimals: number = 18): string {
-  const formatted = formatUnits(BigInt(value), decimals);
-  const num = parseFloat(formatted);
-  if (num === 0) return '0';
-  if (num < 0.0001) return '<0.0001';
-  if (num < 1) return num.toFixed(4);
-  if (num < 1000) return num.toFixed(4);
-  return num.toLocaleString('en-US', { maximumFractionDigits: 4 });
-}
-
+const CHAIN_ID = 43114;
 const LIMIT = 20;
+/** Parallel detail lookups per page; the indexer rate-limits bursts. */
+const DETAIL_CONCURRENCY = 4;
+/** A plain AVAX transfer costs 21,000 gas; a row above that with no transfers may be waiting on logs. */
+const PLAIN_TRANSFER_GAS = 21_000;
+/** Logs can trail transactions by a few seconds; rows this young are completed from the detail endpoint. */
+const FRESH_MS = 60_000;
 
-export function useTransactionHistory(): TransactionHistoryData {
-  const { address, isConnected } = useAccount();
+function isFresh(tx: ApiTransaction): boolean {
+  return Date.now() - Date.parse(tx.block_time) < FRESH_MS;
+}
 
-  // Fetch AVAX price — reuses the same cache as useAvaxPrice()
-  const { data: avaxPriceData } = useQuery({
-    queryKey: queryKeys.avaxPrice(),
-    queryFn: () => coingecko.getAvaxPrice(),
-    refetchInterval: 60_000,
+function hasNoMovements(tx: ApiTransaction): boolean {
+  return (tx.token_transfers?.length ?? 0) === 0 && (tx.internal_txs?.length ?? 0) === 0 && (tx.approvals?.length ?? 0) === 0;
+}
+
+/** Rows from an older indexer lack the arrays; fresh rows can carry empty ones while logs catch up. */
+function needsDetail(tx: ApiTransaction): boolean {
+  if (tx.token_transfers === undefined) return true;
+  return isFresh(tx) && tx.gas_used > PLAIN_TRANSFER_GAS && hasNoMovements(tx);
+}
+
+// The list endpoint carries token transfers, internal calls and approvals when asked
+// with include=transfers. Rows from an indexer that predates the flag lack them and are
+// completed from the per-transaction endpoint. Mined transactions never change, so
+// details are cached for the life of the tab. A failed lookup falls back to the bare row.
+const detailCache = new Map<string, Promise<ApiTransaction>>();
+
+function fetchDetail(tx: ApiTransaction): Promise<ApiTransaction> {
+  let pending = detailCache.get(tx.hash);
+  if (!pending) {
+    pending = api.getTransaction(tx.hash, CHAIN_ID).then(
+      (res) => {
+        const full = { ...tx, ...res.data };
+        // Still nothing for a young call: logs have not landed, so do not pin that answer.
+        if (isFresh(full) && full.gas_used > PLAIN_TRANSFER_GAS && hasNoMovements(full)) detailCache.delete(tx.hash);
+        return full;
+      },
+      () => {
+        detailCache.delete(tx.hash);
+        return tx;
+      },
+    );
+    detailCache.set(tx.hash, pending);
+  }
+  return pending;
+}
+
+async function withDetails(list: ApiTransaction[]): Promise<ApiTransaction[]> {
+  const out: ApiTransaction[] = new Array(list.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(DETAIL_CONCURRENCY, list.length) }, async () => {
+    while (next < list.length) {
+      const i = next++;
+      out[i] = needsDetail(list[i]) ? await fetchDetail(list[i]) : list[i];
+    }
   });
-  const avaxPrice = avaxPriceData?.price ?? 0;
+  await Promise.all(workers);
+  return out;
+}
+
+/** History for the signed-in wallet, or for `addressOverride` when given (explorer pages). */
+export function useTransactionHistory(addressOverride?: string): TransactionHistoryData {
+  const account = useAccount();
+  const address = addressOverride ?? account.address;
+  const isConnected = addressOverride ? true : account.isConnected;
 
   const {
     data,
@@ -196,8 +143,8 @@ export function useTransactionHistory(): TransactionHistoryData {
   } = useInfiniteQuery({
     queryKey: queryKeys.transactionHistory(address ?? ''),
     queryFn: async ({ pageParam = 0 }) => {
-      const txResponse = await api.getAddressTransactions(address!, 43114, LIMIT, pageParam * LIMIT);
-      return txResponse.data || [];
+      const txResponse = await api.getAddressTransactions(address!, CHAIN_ID, LIMIT, pageParam * LIMIT, true);
+      return withDetails(txResponse.data || []);
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) => {
@@ -206,46 +153,70 @@ export function useTransactionHistory(): TransactionHistoryData {
     enabled: isConnected && !!address,
   });
 
-  // Transform all pages of API transactions into UI transactions
-  const transactions: Transaction[] = (data?.pages ?? []).flatMap(page =>
-    page.map((tx: ApiTransaction) => {
-      const txType = getTransactionType(tx, address!);
-      const isReceive = txType === 'receive';
-      const protocol = getProtocol(tx.to);
-
-      const gasFeeWei = BigInt(tx.gas_used) * BigInt(tx.gas_price);
-      const gasFeeAvax = formatUnits(gasFeeWei, 18);
-      const gasFeeUsd = parseFloat(gasFeeAvax) * avaxPrice;
-
-      const transfers: TokenTransfer[] = [];
-      if (tx.value !== '0') {
-        const avaxAmount = formatBalance(tx.value);
-        const avaxValueUsd = parseFloat(formatUnits(BigInt(tx.value), 18)) * avaxPrice;
-        transfers.push({
-          symbol: 'AVAX',
-          amount: avaxAmount,
-          valueUsd: avaxValueUsd,
-          logoUrl: AVAX_LOGO,
-          direction: isReceive ? 'in' : 'out',
-        });
-      }
-
+  // Legs are derived once per fetched page; prices are layered on top so rows render
+  // immediately and the USD column fills in when the (batched) price lookup lands.
+  const summarized = useMemo(() => {
+    if (!address) return [];
+    return (data?.pages ?? []).flat().map((tx) => {
+      const legs = collectTransferLegs(tx, address);
+      const protocol = getProtocol(tx.to, tx.to_label);
+      const type = classifyTransaction(tx, legs, protocol, address);
       return {
-        hash: tx.hash,
-        timestamp: new Date(tx.block_time),
-        type: txType,
-        status: tx.success ? 'success' as const : 'failed' as const,
-        protocol: protocol ? { name: protocol.name, logoUrl: protocol.logoUrl } : undefined,
-        transfers,
-        gasFee: {
-          amount: parseFloat(gasFeeAvax).toFixed(6),
-          valueUsd: gasFeeUsd,
-        },
-        blockNumber: tx.block_number,
-        from: tx.from,
-        to: tx.to,
+        tx,
+        legs,
+        protocol,
+        type,
+        title: tx.from.toLowerCase() === address.toLowerCase() ? intentTitle(tx) : null,
+        context: formatCounterparty(describeCounterparty(tx, type, address, protocol)),
       };
-    })
+    });
+  }, [data, address]);
+
+  const priceAddresses = useMemo(() => {
+    const set = new Set<string>([NATIVE_AVAX_ADDRESS]);
+    for (const row of summarized) for (const leg of row.legs) set.add(leg.token);
+    return Array.from(set);
+  }, [summarized]);
+  const { priceOf } = useSwapPrices(priceAddresses);
+  const avaxPrice = priceOf(NATIVE_AVAX_ADDRESS) ?? 0;
+
+  const transactions: Transaction[] = useMemo(
+    () =>
+      summarized.map(({ tx, legs, protocol, type, title, context }) => {
+        const gasFeeAvax = formatUnits(BigInt(tx.gas_used) * BigInt(tx.gas_price), 18);
+
+        const transfers: TokenTransfer[] = legs.map((leg) => {
+          const amount = parseFloat(formatUnits(leg.raw, leg.decimals));
+          const price = priceOf(leg.token) ?? 0;
+          return {
+            symbol: leg.symbol,
+            amount: formatLegAmount(leg.raw, leg.decimals),
+            valueUsd: amount * price,
+            logoUrl: leg.logoUrl,
+            direction: leg.direction,
+          };
+        });
+
+        return {
+          hash: tx.hash,
+          timestamp: new Date(tx.block_time),
+          type,
+          status: tx.success ? ('success' as const) : ('failed' as const),
+          protocol: protocol ? { name: protocol.name, logoUrl: protocol.logoUrl } : undefined,
+          title,
+          context,
+          method: methodLabel(tx.method),
+          transfers,
+          gasFee: {
+            amount: parseFloat(gasFeeAvax).toFixed(6),
+            valueUsd: parseFloat(gasFeeAvax) * avaxPrice,
+          },
+          blockNumber: tx.block_number,
+          from: tx.from,
+          to: tx.to,
+        };
+      }),
+    [summarized, priceOf, avaxPrice],
   );
 
   const handleLoadMore = useCallback(() => {
@@ -273,7 +244,7 @@ export function useActiveSince(): { date: Date | null; loading: boolean } {
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.activeSince(address ?? ''),
     queryFn: async () => {
-      const response = await api.getAddressTransactions(address!, 43114, 1, 0);
+      const response = await api.getAddressTransactions(address!, CHAIN_ID, 1, 0);
       if (response.data && response.data.length > 0) {
         return new Date(response.data[0].block_time);
       }

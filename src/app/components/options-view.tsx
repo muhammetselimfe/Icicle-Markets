@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Target, Coins, ChevronDown } from 'lucide-react';
+import { Coins, ChevronRight, Target } from 'lucide-react';
+import { PageHeader } from '@/app/components/shell/page-header';
+import { EmptyState } from '@/app/components/shell/empty-state';
+import { SegmentedControl } from '@/app/components/shell/segmented-control';
 import { ErrorState } from '@/app/components/ui/data-states';
 import { useAccount, useReadContract, usePublicClient, useWalletClient } from 'wagmi';
 import { cn } from '@/app/components/ui/utils';
@@ -11,122 +14,173 @@ import { useChainSwitch } from '@/app/hooks/useChainSwitch';
 import { useChainId } from 'wagmi';
 import { CHAIN_IDS, OPTIONS_CONTRACTS } from '@/app/config/wagmi';
 import { ERC20_ABI } from '@/app/config/options-abis';
-import { OptionMarketCard } from '@/app/components/option-market-card';
+import { OptionMarketCard, AssetLogo, MarketStateBadge } from '@/app/components/option-market-card';
 
 function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-white/10 rounded ${className}`} />;
+  return <div className={cn('animate-pulse bg-ice-line/[0.08] rounded', className)} />;
 }
 
-function StateBadge({ state, label }: { state: MarketState; label: string }) {
-  const colors: Record<number, string> = {
-    [MarketState.Trading]: 'bg-ice-up/[0.08] text-ice-up border border-ice-up/20',
-    [MarketState.SettlementOpen]: 'bg-yellow-500/10 text-yellow-400',
-    [MarketState.PendingOps]: 'bg-yellow-500/10 text-yellow-400',
-    [MarketState.FinalizedPrimary]: 'bg-ice-line/[0.06] text-ice-faint',
-    [MarketState.FinalizedSecondary]: 'bg-ice-line/[0.06] text-ice-faint',
-    [MarketState.FailedPendingManual]: 'bg-ice-down/10 text-ice-down',
-  };
-  return (
-    <span
-      className={cn('px-2.5 py-1 rounded-md font-mono inline-flex items-center gap-1.5', colors[state] ?? 'bg-ice-line/[0.06] text-ice-faint')}
-      style={{ fontSize: '11px' }}
-    >
-      {state === MarketState.Trading && <span className="w-1.5 h-1.5 rounded-full bg-ice-up" />}
-      {label}
-    </span>
-  );
+function formatWhen(ts: number): string {
+  if (!ts) return '—';
+  return new Date(ts * 1000).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function formatTimestamp(ts: number): string {
-  if (!ts) return '-';
-  return new Date(ts * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function StatCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="flex-1 rounded-2xl bg-ice-surface border border-ice-line/15 p-4 lg:p-[18px] flex flex-col gap-2.5">
-      <span className="font-mono text-ice-faint uppercase" style={{ fontSize: '10px', letterSpacing: '1px' }}>{label}</span>
-      <span className={cn('font-mono font-semibold leading-none', accent ? 'text-ice-accent' : 'text-ice-text')} style={{ fontSize: '22px' }}>
-        {value}
-      </span>
-    </div>
-  );
-}
+type Filter = 'live' | 'settled';
+const SETTLED_PAGE = 10;
 
 export function OptionsView() {
   const navigate = useNavigate();
   const { isConnected } = useAccount();
+  const { markets, loading, error, refetch } = useOptionsMarkets();
 
-  const { markets, loading: marketsLoading, error: marketsError, refetch: refetchMarkets } = useOptionsMarkets();
+  const live = useMemo(
+    () => markets.filter((m) => m.state === MarketState.Trading).sort((a, b) => b.marketId - a.marketId),
+    [markets],
+  );
+  const settled = useMemo(
+    () => markets.filter((m) => m.state !== MarketState.Trading).sort((a, b) => b.marketId - a.marketId),
+    [markets],
+  );
 
-  const liveCount = markets.filter((m) => m.state === MarketState.Trading).length;
-  const settledCount = markets.length - liveCount;
-  const assetCount = new Set(markets.map((m) => m.assetSymbol)).size;
+  // Start on Live; if nothing is live once data lands, show what exists.
+  const [filter, setFilter] = useState<Filter | null>(null);
+  const activeFilter: Filter = filter ?? (live.length === 0 && settled.length > 0 ? 'settled' : 'live');
+  const [settledShown, setSettledShown] = useState(SETTLED_PAGE);
+
+  const open = (id: number) => navigate(`/predict/${id}`);
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
-      {/* Section header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-9 h-9 shrink-0 rounded-[9px] bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
-          <Target className="w-[18px] h-[18px] text-ice-accent" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-ice-text font-bold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px' }}>
-            Icicle Options
+      <PageHeader title="Predict" subtitle="Pick a price range for an asset, trade it, and get paid if it lands there.">
+        {!error && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <SegmentedControl
+              aria-label="Market filter"
+              value={activeFilter}
+              onChange={setFilter}
+              segments={[
+                { id: 'live', label: 'Live', badge: loading ? undefined : live.length },
+                { id: 'settled', label: 'Settled', badge: loading ? undefined : settled.length },
+              ]}
+            />
+            <TestnetRow signedIn={isConnected} />
           </div>
-          <p className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-            Prediction markets on Avalanche. Pick a price range, trade, and win if you're right.
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-ice-surface border border-ice-line/15">
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-          <span className="font-mono text-yellow-400" style={{ fontSize: '12px' }}>Fuji Testnet</span>
-        </div>
-      </div>
+        )}
+      </PageHeader>
 
-      {/* Stats strip */}
-      {!marketsError && (
-        <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-6">
-          <StatCard label="Live Markets" value={marketsLoading ? '—' : String(liveCount)} accent />
-          <StatCard label="Settled" value={marketsLoading ? '—' : String(settledCount)} />
-          <StatCard label="Total Markets" value={marketsLoading ? '—' : String(markets.length)} />
-          <StatCard label="Assets" value={marketsLoading ? '—' : String(assetCount)} />
-        </div>
-      )}
-
-      {/* Testnet info banner with faucet */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-ice-surface border border-ice-line/15 rounded-xl">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" />
-          <span className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-            Options markets are in testnet. You may need to switch networks when trading.
-          </span>
-        </div>
-        {isConnected && <ClaimTestUsdcButton />}
-      </div>
-
-      {/* Markets */}
-      {marketsError ? (
-        <ErrorState message={marketsError} onRetry={refetchMarkets} />
-      ) : marketsLoading ? (
+      {error ? (
+        <ErrorState message={error} onRetry={refetch} />
+      ) : loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="bg-ice-surface border border-ice-line/15 p-[18px] rounded-2xl space-y-4">
+            <div key={i} className="bg-ice-surface border border-ice-line/15 p-5 rounded-2xl space-y-4">
               <div className="flex items-center gap-3">
                 <Skeleton className="h-9 w-9 rounded-full" />
-                <div className="flex-1"><Skeleton className="h-4 w-24 mb-1.5" /><Skeleton className="h-3 w-16" /></div>
-                <Skeleton className="h-5 w-16" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-24 mb-1.5" />
+                  <Skeleton className="h-3 w-16" />
+                </div>
+                <Skeleton className="h-6 w-16 rounded-full" />
               </div>
-              <Skeleton className="h-[68px] w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-[64px] w-full" />
+              <Skeleton className="h-5 w-full" />
             </div>
           ))}
         </div>
-      ) : markets.length === 0 ? (
-        <EmptyState message="No prediction markets available yet" />
+      ) : activeFilter === 'live' ? (
+        live.length === 0 ? (
+          <EmptyState
+            icon={<Target className="w-6 h-6" />}
+            title="No live markets right now"
+            message={settled.length > 0 ? 'New markets open daily. Settled markets are a tap away.' : 'New markets open daily. Check back soon.'}
+            action={settled.length > 0 ? { label: `See ${settled.length} settled`, onClick: () => setFilter('settled') } : undefined}
+          />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {live.map((m) => (
+              <OptionMarketCard key={m.marketId} market={m} onClick={() => open(m.marketId)} />
+            ))}
+          </div>
+        )
+      ) : settled.length === 0 ? (
+        <EmptyState icon={<Target className="w-6 h-6" />} title="Nothing settled yet" message="Markets show up here once trading ends and the oracle reports a price." />
       ) : (
-        <MarketsListing markets={markets} onTrade={(id) => navigate(`/options/trade/${id}`)} />
+        <div className="rounded-2xl bg-ice-surface border border-ice-line/15 overflow-hidden">
+          <ul className="divide-y divide-ice-line/10">
+            {settled.slice(0, settledShown).map((m) => (
+              <li key={m.marketId}>
+                <SettledMarketRow market={m} onOpen={() => open(m.marketId)} />
+              </li>
+            ))}
+          </ul>
+          {settled.length > settledShown && (
+            <button
+              type="button"
+              onClick={() => setSettledShown((n) => n + SETTLED_PAGE)}
+              className="w-full min-h-[48px] border-t border-ice-line/10 text-ice-accent text-[14px] font-medium hover:bg-ice-line/[0.05] transition-colors"
+            >
+              Show {Math.min(SETTLED_PAGE, settled.length - settledShown)} more
+            </button>
+          )}
+        </div>
       )}
+    </div>
+  );
+}
+
+/** One settled market, as a grouped-list row. */
+function SettledMarketRow({ market: m, onOpen }: { market: MarketDisplay; onOpen: () => void }) {
+  const range = `${formatTickAsPrice(m.minTick, m.tickDivisor)} – ${formatTickAsPrice(m.maxTick, m.tickDivisor)}`;
+  const settledAt =
+    m.settlementPrice !== null && m.settlementPrice > 0
+      ? m.priceDecimals === 0
+        ? `$${Math.round(m.settlementPrice).toLocaleString('en-US')}`
+        : `$${m.settlementPrice.toFixed(2)}`
+      : null;
+  // In a list of settled markets the final price is the result; a badge only earns its
+  // place when the market is still waiting on the oracle or needs manual settlement.
+  const finalized = m.state === MarketState.FinalizedPrimary || m.state === MarketState.FinalizedSecondary;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full flex items-center gap-3 md:gap-4 px-4 md:px-5 min-h-[64px] py-3 text-left hover:bg-ice-line/[0.05] transition-colors"
+    >
+      <AssetLogo src={m.assetLogo} symbol={m.assetSymbol} />
+      <span className="flex-1 min-w-0">
+        <span className="flex items-center gap-2">
+          <span className="text-ice-text font-semibold text-[15px]">{m.assetSymbol}/USD</span>
+          <span className="text-ice-faint text-[12px] tabular-nums">#{m.marketId}</span>
+        </span>
+        <span className="block text-ice-muted text-[13px] truncate tabular-nums">
+          {formatWhen(m.tradingEnd)}
+          <span className="hidden sm:inline"> · {range}</span>
+        </span>
+      </span>
+      <span className="flex flex-col items-end gap-1 shrink-0">
+        {settledAt && (
+          <span className="text-ice-text text-[14px] tabular-nums">
+            <span className="hidden sm:inline">Settled at </span>
+            <span className="font-semibold">{settledAt}</span>
+          </span>
+        )}
+        {!finalized && <MarketStateBadge state={m.state} label={m.stateLabel} />}
+      </span>
+      <ChevronRight className="w-4 h-4 text-ice-faint shrink-0" />
+    </button>
+  );
+}
+
+/** Compact testnet notice; signed-in users also get the faucet here. */
+function TestnetRow({ signedIn }: { signedIn: boolean }) {
+  return (
+    <div className="flex items-center gap-3 sm:ml-auto min-h-[44px] px-3 rounded-xl bg-ice-line/[0.05] text-[13px]">
+      <span className="inline-flex items-center gap-2 text-ice-muted">
+        <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
+        Fuji testnet · trades use test USDC
+      </span>
+      {signedIn && <ClaimTestUsdcButton />}
     </div>
   );
 }
@@ -185,132 +239,36 @@ export function ClaimTestUsdcButton() {
     }
   };
 
-  const balanceStr = balance !== undefined ? formatUsdc(balance as bigint) : '...';
+  const balanceStr = balance !== undefined ? formatUsdc(balance as bigint) : '…';
   const isSuccess = mintState === 'success';
-  const isBusy = mintState !== 'idle' && mintState !== 'success' || isSwitching;
+  const isBusy = (mintState !== 'idle' && mintState !== 'success') || isSwitching;
 
   return (
-    <div className="flex items-center gap-3 w-full sm:w-auto">
-      <span className="text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}>
-        Balance: <span className="text-ice-text font-mono font-medium">{balanceStr}</span>
+    <div className="flex items-center gap-3 ml-auto">
+      <span className="text-ice-muted text-[13px] whitespace-nowrap">
+        <span className="text-ice-text font-medium tabular-nums">{balanceStr}</span> USDC
       </span>
       <button
+        type="button"
         onClick={handleClaim}
         disabled={isBusy}
         className={cn(
-          'flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-medium transition-colors whitespace-nowrap border',
+          'inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-[13px] font-medium transition-colors whitespace-nowrap',
           isSuccess
-            ? 'bg-ice-up/10 text-ice-up border-ice-up/20'
+            ? 'bg-ice-up/10 text-ice-up'
             : isBusy
-            ? 'bg-ice-line/[0.06] text-ice-faint border-transparent cursor-not-allowed'
-            : 'bg-ice-accent/10 text-ice-accent border-ice-line/30 hover:bg-ice-accent/20',
+              ? 'bg-ice-line/[0.08] text-ice-faint cursor-not-allowed'
+              : 'bg-ice-accent/[0.12] text-ice-accent hover:bg-ice-accent/20',
         )}
-        style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px' }}
       >
-        {isBusy && !isSuccess && (
-          <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-        )}
-        {isSuccess ? 'Claimed!' : isWrongChain ? 'Switch to Fuji' : (
+        {isBusy && !isSuccess && <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+        {isSuccess ? 'Claimed' : isWrongChain ? 'Switch to Fuji' : (
           <>
             <Coins className="w-3.5 h-3.5" />
-            Claim 1,000 Test USDC
+            Get 1,000 test USDC
           </>
         )}
       </button>
-    </div>
-  );
-}
-
-function AssetLogo({ src, symbol }: { src: string; symbol: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-bold">{symbol.slice(0, 2)}</div>;
-  }
-  return <img src={src} alt={symbol} className="w-8 h-8 rounded-full" onError={() => setFailed(true)} />;
-}
-
-function MarketsListing({ markets, onTrade }: { markets: MarketDisplay[]; onTrade: (id: number) => void }) {
-  const liveMarkets = [...markets]
-    .filter((m) => m.state === MarketState.Trading)
-    .sort((a, b) => b.marketId - a.marketId);
-  const settledMarkets = [...markets]
-    .filter((m) => m.state !== MarketState.Trading)
-    .sort((a, b) => b.marketId - a.marketId);
-
-  // Default the settled list open when there's nothing live to show, so the
-  // page is immediately useful instead of an empty void.
-  const [settledOpen, setSettledOpen] = useState(liveMarkets.length === 0);
-
-  return (
-    <div className="space-y-6">
-      {/* Live Markets */}
-      {liveMarkets.length > 0 ? (
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-ice-up" />
-            <h3 className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
-              Live ({liveMarkets.length})
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {liveMarkets.map((m) => (
-              <OptionMarketCard key={m.marketId} market={m} onClick={() => onTrade(m.marketId)} />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <EmptyState message="No live markets right now — check back soon or browse settled markets below." />
-      )}
-
-      {/* Settled Markets — compact rows, collapsible */}
-      {settledMarkets.length > 0 && (
-        <div>
-          <button onClick={() => setSettledOpen((o) => !o)} className="flex items-center gap-2 mb-3 group">
-            <div className="w-2 h-2 rounded-full bg-ice-faint" />
-            <h3 className="text-ice-muted font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px' }}>
-              Settled ({settledMarkets.length})
-            </h3>
-            <ChevronDown className={cn('w-4 h-4 text-ice-faint transition-transform', settledOpen && 'rotate-180')} />
-          </button>
-          {settledOpen && (
-            <div className="space-y-2">
-              {settledMarkets.map((m) => (
-                <SettledMarketRow key={m.marketId} market={m} onTrade={() => onTrade(m.marketId)} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SettledMarketRow({ market: m, onTrade }: { market: MarketDisplay; onTrade: () => void }) {
-  return (
-    <div
-      onClick={onTrade}
-      className="flex items-center gap-4 px-4 py-3 bg-ice-surface border border-ice-line/15 rounded-xl cursor-pointer hover:border-ice-line/30 hover:bg-ice-surface2 transition-all"
-    >
-      <AssetLogo src={m.assetLogo} symbol={m.assetSymbol} />
-      <div className="flex-1 min-w-0">
-        <span className="text-ice-text font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
-          {m.assetSymbol}/USD
-        </span>
-        <span className="text-ice-faint font-mono ml-2" style={{ fontSize: '12px' }}>#{m.marketId}</span>
-      </div>
-      <span className="text-ice-muted font-mono hidden sm:block" style={{ fontSize: '13px' }}>
-        {formatTickAsPrice(m.minTick, m.tickDivisor)} – {formatTickAsPrice(m.maxTick, m.tickDivisor)}
-      </span>
-      <span className="text-ice-faint font-mono" style={{ fontSize: '12px' }}>{formatTimestamp(m.tradingEnd)}</span>
-      <StateBadge state={m.state} label={m.stateLabel} />
-    </div>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="flex items-center justify-center text-center p-12 rounded-2xl bg-ice-surface border border-ice-line/15 text-ice-muted" style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px' }}>
-      {message}
     </div>
   );
 }

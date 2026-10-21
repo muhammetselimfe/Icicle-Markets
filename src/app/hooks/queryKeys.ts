@@ -23,6 +23,7 @@ export const queryKeys = {
     ['swapQuote', tokenIn, tokenOut, amount] as const,
   swapPrices: (coingeckoIds: string) => ['swapPrices', coingeckoIds] as const,
   activeSince: (address: string) => ['activeSince', address] as const,
+  addressLabel: (address: string) => ['addressLabel', address] as const,
   optionsMarkets: () => ['optionsMarkets'] as const,
   optionsPositions: (owner: string) => ['optionsPositions', owner] as const,
   optionsOpenCost: (marketId: number, lower: string, upper: string, qty: string) =>

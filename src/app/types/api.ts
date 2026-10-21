@@ -72,11 +72,56 @@ export interface InternalTransaction {
   success: boolean;
 }
 
+/** What the indexer knows about an address (curated list, verified source or token metadata). */
+export type AddressLabelKind = 'protocol' | 'token' | 'pool' | 'router' | 'bridge' | 'exchange' | 'wallet' | 'contract';
+
+export interface AddressLabel {
+  name: string;
+  kind: AddressLabelKind;
+  /** Group the contract belongs to, e.g. "LFJ" for its routers and pools. */
+  protocol: string | null;
+  is_contract: boolean;
+  verified: boolean;
+  /** Implementation behind a proxy, when the address is one. */
+  implementation: string | null;
+}
+
+/** Decoded 4-byte selector of the call. `null` on plain transfers. */
+export interface TransactionMethod {
+  selector: string;
+  name: string | null;
+  signature: string | null;
+}
+
+export type TransactionIntentKind =
+  | 'remove_liquidity'
+  | 'add_liquidity'
+  | 'swap'
+  | 'send'
+  | 'receive'
+  | 'deposit'
+  | 'withdraw'
+  | 'stake'
+  | 'unstake'
+  | 'claim'
+  | 'approve'
+  | 'bridge'
+  | 'contract_call';
+
+/** Server-side reading of what the sender did, from the selector, the target label and transfer direction. */
+export interface TransactionIntent {
+  kind: TransactionIntentKind;
+  label: string;
+  protocol: string | null;
+  confidence: number;
+}
+
 export interface TokenTransfer {
   token: string;
   name?: string;
   symbol?: string;
   decimals: number;
+  token_label?: AddressLabel | null;
   from: string;
   to: string;
   value: string;
@@ -88,6 +133,7 @@ export interface Approval {
   name?: string;
   symbol?: string;
   decimals: number;
+  token_label?: AddressLabel | null;
   owner: string;
   spender: string;
   amount: string;
@@ -109,6 +155,11 @@ export interface Transaction {
   gas_used: number;
   success: boolean;
   type: number;
+  method?: TransactionMethod | null;
+  from_label?: AddressLabel | null;
+  to_label?: AddressLabel | null;
+  intent?: TransactionIntent | null;
+  /** Present on the single-transaction endpoint and on lists fetched with `include=transfers`. */
   internal_txs?: InternalTransaction[];
   token_transfers?: TokenTransfer[];
   approvals?: Approval[];

@@ -1,314 +1,252 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { User, ArrowLeft, Copy, Check, ExternalLink, Clock, ArrowRight, Activity } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { ExternalLink, Wallet, ChevronRight, BadgeCheck } from 'lucide-react';
+import { formatUnits } from 'viem';
+import { DetailHeader } from '@/app/components/shell/page-header';
+import { DetailList, DetailRow, CopyButton, AddressLink, DetailSkeleton, shortHex } from '@/app/components/shell/detail-list';
+import { WalletAvatar } from '@/app/components/shell/wallet-avatar';
+import { EmptyState } from '@/app/components/shell/empty-state';
+import { ErrorState } from '@/app/components/ui/data-states';
+import { ActivityList } from '@/app/components/portfolio-view';
+import { useTransactionHistory } from '@/app/hooks/useTransactionHistory';
+import { useAddressLabel } from '@/app/hooks/useAddressLabel';
 import { api } from '@/app/services/api';
-import { formatAddress, formatWei } from '@/app/utils/formatters';
 import { getRelativeTime } from '@/app/utils/time';
-import { getAddressInfo } from '@/app/data/known-addresses';
-import type { Transaction, NativeBalance } from '@/app/types/api';
+import { getTokenByAddress } from '@/app/data/markets-tokens';
+import type { NativeBalance, TokenBalance } from '@/app/types/api';
+import { cn } from '@/app/components/ui/utils';
 
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-ice-line/[0.08] rounded-lg ${className}`} />;
+const MAX_TOKENS = 8;
+/** Airdrop spam names itself after a website so holders go there; a real token never does. */
+const SPAM_TOKEN = /https?:\/\/|www\.|\.(com|org|xyz|io|net|app|finance)\b/i;
+
+function looksLikeSpam(t: TokenBalance): boolean {
+  return SPAM_TOKEN.test(t.name ?? '') || SPAM_TOKEN.test(t.symbol ?? '');
+}
+
+function formatAvax(wei: string): string {
+  const n = parseFloat(formatUnits(BigInt(wei), 18));
+  if (n === 0) return '0';
+  if (n < 0.0001) return '<0.0001';
+  return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 4 : 2 });
+}
+
+function formatTokenBalance(raw: string, decimals: number): string {
+  const n = parseFloat(formatUnits(BigInt(raw), decimals));
+  if (n === 0) return '0';
+  if (n < 0.0001) return '<0.0001';
+  return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 4 : 2 });
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="rounded-xl bg-ice-line/[0.05] p-4 flex flex-col gap-1">
+      <span className="text-ice-muted text-[13px]">{label}</span>
+      <span className="text-ice-text font-semibold tabular-nums tracking-[-0.01em] text-[20px] leading-tight">{value}</span>
+      {sub && <span className="text-ice-faint text-[12px]">{sub}</span>}
+    </div>
+  );
 }
 
 export function AddressPage() {
-  const { address } = useParams<{ address: string }>();
-  const navigate = useNavigate();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [nativeData, setNativeData] = useState<NativeBalance | null>(null);
+  const { address = '' } = useParams<{ address: string }>();
+  const valid = /^0x[a-f0-9]{40}$/i.test(address);
+  const label = useAddressLabel(valid ? address : null);
+
+  const [native, setNative] = useState<NativeBalance | null>(null);
+  const [tokens, setTokens] = useState<TokenBalance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
+  const [showAllTokens, setShowAllTokens] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
-  const LIMIT = 25;
-  const addressInfo = getAddressInfo(address);
-  const addressLabel = addressInfo?.name || null;
-  const addressType = addressInfo?.type || null;
+  const history = useTransactionHistory(valid ? address : undefined);
 
   useEffect(() => {
-    async function fetchAddressData() {
-      if (!address) return;
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const promises: Promise<any>[] = [
-          api.getAddressTransactions(address, 43114, LIMIT, page * LIMIT)
-        ];
-
-        if (page === 0) {
-          promises.push(api.getAddressNativeBalance(address).catch(() => null));
-        }
-
-        const [txResponse, nativeResponse] = await Promise.all(promises);
-
-        if (page === 0) {
-          setTransactions(txResponse.data);
-          if (nativeResponse?.data) {
-            setNativeData(nativeResponse.data);
-          }
-        } else {
-          setTransactions(prev => [...prev, ...txResponse.data]);
-        }
-        setHasMore(txResponse.data.length === LIMIT);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch address data');
-      } finally {
-        setLoading(false);
-      }
+    let cancelled = false;
+    if (!valid) {
+      setLoading(false);
+      return;
     }
+    setLoading(true);
+    setError(null);
+    Promise.all([api.getAddressNativeBalance(address).catch(() => null), api.getAddressBalances(address, 43114, 100, 0).catch(() => null)])
+      .then(([nativeRes, balancesRes]) => {
+        if (cancelled) return;
+        setNative(nativeRes?.data ?? null);
+        const held = (balancesRes?.data ?? []).filter((t) => t.balance !== '0' && !looksLikeSpam(t));
+        // Listed tokens first, then by raw balance as a rough proxy for relevance.
+        held.sort((a, b) => Number(!!getTokenByAddress(b.token)) - Number(!!getTokenByAddress(a.token)));
+        setTokens(held);
+        // Both calls failing is an outage or a rate limit, not an empty address.
+        if (!nativeRes && !balancesRes) setError('Could not load this address right now.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, valid, attempt]);
 
-    fetchAddressData();
-  }, [address, page]);
-
-  const copyToClipboard = (text: string, field: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const loadMore = () => {
-    setPage(prev => prev + 1);
-  };
-
-  const stats = {
-    totalTxs: nativeData?.tx_count !== undefined
-      ? nativeData.tx_count.toLocaleString()
-      : transactions.length + (hasMore ? '+' : ''),
-    sent: transactions.filter(tx => tx.from.toLowerCase() === address?.toLowerCase()).length,
-    received: transactions.filter(tx => tx.to?.toLowerCase() === address?.toLowerCase()).length,
-  };
-
-  if (loading && transactions.length === 0) {
+  if (!valid) {
     return (
-      <div className="container mx-auto px-6 py-8">
-        <div className="mb-6">
-          <Skeleton className="h-8 w-48" />
-        </div>
-        <div className="bg-ice-surface p-8 rounded-xl">
-          <div className="space-y-6">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        </div>
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-2xl">
+        <DetailHeader backLabel="Explorer" backTo="/explorer" />
+        <ErrorState message="That is not an Avalanche address." />
       </div>
     );
   }
 
-  if (error && transactions.length === 0) {
+  if (loading) {
     return (
-      <div className="container mx-auto px-6 py-8">
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span className="text-[14px]">Back</span>
-        </button>
-
-        <div className="bg-red-500/10 p-8 rounded-xl text-center">
-          <User className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-red-500 font-medium mb-2 text-[16px]">
-            Address Not Found
-          </h1>
-          <p className="text-ice-muted text-[14px]">
-            {error}
-          </p>
-        </div>
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-2xl">
+        <DetailHeader backLabel="Explorer" backTo="/explorer" />
+        <DetailSkeleton />
       </div>
     );
   }
+
+  const balanceAvax = native ? formatAvax(native.balance) : '—';
+  const visibleTokens = showAllTokens ? tokens : tokens.slice(0, MAX_TOKENS);
+  const title = label?.name ?? (label?.isContract ? 'Contract' : 'Address');
 
   return (
-    <div className="container mx-auto px-6 py-8">
-      {/* Back button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="flex items-center gap-2 bg-ice-surface2 px-4 py-2 rounded-lg text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span className="text-[14px]">Back</span>
-      </button>
+    <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-2xl">
+      <DetailHeader backLabel="Explorer" backTo="/explorer" />
 
-      {/* Main container */}
-      <div className="bg-ice-surface rounded-xl overflow-hidden mb-6">
-        <div className="p-8">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-ice-line/[0.08] rounded-xl flex items-center justify-center">
-              <User className="w-7 h-7 text-ice-muted" />
+      {/* Identity and balance */}
+      <section className="rounded-2xl bg-ice-surface border border-ice-line/15 p-5 md:p-6 mb-4">
+        <div className="flex items-center gap-4 mb-5">
+          <WalletAvatar address={address} size={48} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-ice-text font-bold text-[22px] leading-tight truncate">{title}</h1>
+              {label?.kind && (
+                <span className="px-2 h-6 inline-flex items-center rounded-full bg-ice-line/[0.08] text-ice-muted text-[12px] font-medium capitalize">{label.kind}</span>
+              )}
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-ice-text font-medium text-[16px]">
-                  {addressLabel || 'Address'}
-                </h1>
-                {addressType && (
-                  <span
-                    className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                      addressType === 'exchange' ? 'bg-yellow-500/10 text-yellow-500' :
-                      addressType === 'bridge' ? 'bg-green-500/10 text-green-500' :
-                      addressType === 'protocol' ? 'bg-ice-line/[0.08] text-ice-text' :
-                      'bg-ice-line/[0.08] text-ice-muted'
-                    }`}
-                  >
-                    {addressType.charAt(0).toUpperCase() + addressType.slice(1)}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <code className="text-ice-text break-all text-[14px]">
-                  {address}
-                </code>
-                <button
-                  onClick={() => copyToClipboard(address || '', 'address')}
-                  className="p-2 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
-                >
-                  {copiedField === 'address' ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-ice-muted" />
-                  )}
-                </button>
-              </div>
+            <div className="flex items-center gap-1 text-ice-muted text-[14px]">
+              <span className="font-mono truncate">{shortHex(address, 10, 8)}</span>
+              <CopyButton value={address} label="Copy address" />
+              <a
+                href={`https://snowtrace.io/address/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-8 h-8 -my-1 rounded-full flex items-center justify-center text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors"
+                aria-label="View on Snowtrace"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
           </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="bg-ice-surface2 p-4 rounded-lg">
-              <div className="text-ice-muted mb-2 text-[13px]">
-                Total Transactions
-              </div>
-              <div className="text-ice-text font-medium text-[18px]">
-                {stats.totalTxs}
-              </div>
-            </div>
-            <div className="bg-ice-surface2 p-4 rounded-lg">
-              <div className="text-ice-muted mb-2 text-[13px]">
-                Sent
-              </div>
-              <div className="text-red-500 font-medium text-[18px]">
-                {stats.sent}
-              </div>
-            </div>
-            <div className="bg-ice-surface2 p-4 rounded-lg">
-              <div className="text-ice-muted mb-2 text-[13px]">
-                Received
-              </div>
-              <div className="text-green-500 font-medium text-[18px]">
-                {stats.received}
-              </div>
-            </div>
-          </div>
-
-          {/* External Link */}
-          <a
-            href={`https://snowtrace.io/address/${address}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-3 p-4 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors"
-          >
-            <ExternalLink className="w-4 h-4 text-ice-muted" />
-            <span className="text-ice-muted font-medium text-[14px]">
-              View on Snowtrace
-            </span>
-          </a>
-        </div>
-      </div>
-
-      {/* Transactions List */}
-      <div className="bg-ice-surface rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-ice-line/15">
-          <h2 className="text-ice-text font-medium text-[14px]">
-            Transactions
-          </h2>
         </div>
 
-        {transactions.length === 0 ? (
-          <div className="p-8 text-center">
-            <Activity className="w-12 h-12 text-ice-faint mx-auto mb-4" />
-            <p className="text-ice-muted text-[14px]">
-              No transactions found for this address
-            </p>
+        {error && !native ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-ice-down/[0.08] px-4 py-3 text-[14px]">
+            <span className="text-ice-down">{error}</span>
+            <button type="button" onClick={() => setAttempt((n) => n + 1)} className="text-ice-accent font-medium min-h-[32px] px-2">
+              Try again
+            </button>
           </div>
         ) : (
-          <>
-            <div className="divide-y divide-ice-line/15">
-              {transactions.map((tx) => {
-                const isSent = tx.from.toLowerCase() === address?.toLowerCase();
-                return (
-                  <Link
-                    key={tx.hash}
-                    to={`/tx/${tx.hash}`}
-                    className="block p-4 hover:bg-ice-line/[0.06] transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Direction icon */}
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        isSent ? 'bg-red-500/10' : 'bg-green-500/10'
-                      }`}>
-                        <ArrowRight className={`w-5 h-5 ${isSent ? 'text-red-500' : 'text-green-500 rotate-180'}`} />
-                      </div>
-
-                      {/* Transaction info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-ice-text font-medium text-[14px]">
-                            {formatAddress(tx.hash, 12, 8)}
-                          </span>
-                          <span className={`px-2 py-0.5 text-xs rounded font-medium ${
-                            isSent ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'
-                          }`}>
-                            {isSent ? 'OUT' : 'IN'}
-                          </span>
-                        </div>
-                        <div className="text-ice-muted text-[13px]">
-                          {isSent ? (
-                            <>To: {tx.to ? formatAddress(tx.to, 8, 6) : 'Contract Creation'}</>
-                          ) : (
-                            <>From: {formatAddress(tx.from, 8, 6)}</>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Value */}
-                      <div className="text-right">
-                        <div className={`font-medium ${isSent ? 'text-red-500' : 'text-green-500'} text-[14px]`}>
-                          {isSent ? '-' : '+'}{formatWei(tx.value)}
-                        </div>
-                        <div className="flex items-center gap-1 text-ice-faint text-[12px]">
-                          <Clock className="w-3 h-3" />
-                          {getRelativeTime(tx.block_time)}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Load More */}
-            {hasMore && (
-              <div className="p-4 border-t border-ice-line/15">
-                <button
-                  onClick={loadMore}
-                  disabled={loading}
-                  className="w-full p-3 bg-ice-surface2 rounded-lg hover:bg-ice-line/[0.08] transition-colors disabled:opacity-50"
-                >
-                  <span className="text-ice-muted font-medium text-[14px]">
-                    {loading ? 'Loading...' : 'Load More'}
-                  </span>
-                </button>
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-2 gap-3">
+            <Stat label="AVAX balance" value={balanceAvax} />
+            <Stat label="Transactions" value={native ? native.tx_count.toLocaleString('en-US') : '—'} />
+            <Stat label="First seen" value={native?.first_tx_time ? getRelativeTime(native.first_tx_time) : '—'} sub={native?.first_tx_time ? formatDate(native.first_tx_time) : undefined} />
+            <Stat label="Last active" value={native?.last_tx_time ? getRelativeTime(native.last_tx_time) : '—'} sub={native?.last_tx_time ? formatDate(native.last_tx_time) : undefined} />
+          </div>
         )}
-      </div>
+      </section>
+
+      {/* What the indexer knows about the contract */}
+      {label?.isContract && (
+        <DetailList className="mb-4" title="Contract">
+          {label.protocol && <DetailRow label="Protocol">{label.protocol}</DetailRow>}
+          <DetailRow label="Source">
+            {label.verified ? (
+              <span className="inline-flex items-center gap-1 text-ice-up">
+                <BadgeCheck className="w-4 h-4" /> Verified
+              </span>
+            ) : (
+              <span className="text-ice-muted">Not verified</span>
+            )}
+          </DetailRow>
+          {label.implementation && (
+            <DetailRow label="Implementation" sub="This address is a proxy; the code lives at the implementation.">
+              <AddressLink address={label.implementation} />
+              <CopyButton value={label.implementation} label="Copy implementation address" />
+            </DetailRow>
+          )}
+        </DetailList>
+      )}
+
+      {/* Tokens held */}
+      {tokens.length > 0 && (
+        <DetailList className="mb-4" title={`Tokens · ${tokens.length}`}>
+          {visibleTokens.map((t) => {
+            const listed = getTokenByAddress(t.token);
+            const symbol = listed?.symbol ?? t.symbol ?? shortHex(t.token);
+            const decimals = listed?.decimals ?? t.decimals ?? 18;
+            // Listed tokens have a market page; anything else opens the contract itself.
+            const to = listed ? `/token/${listed.coingeckoId}` : `/address/${t.token}`;
+            return (
+              <Link key={t.token} to={to} className="flex items-center gap-3 px-4 md:px-5 min-h-[56px] py-2.5 hover:bg-ice-line/[0.05] transition-colors">
+                {listed?.logoUrl ? (
+                  <img src={listed.logoUrl} alt="" className="w-9 h-9 rounded-full shrink-0" />
+                ) : (
+                  <span className="w-9 h-9 rounded-full bg-ice-line/[0.1] flex items-center justify-center text-ice-text text-[12px] font-semibold shrink-0">{symbol.slice(0, 2)}</span>
+                )}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-ice-text font-semibold text-[15px] truncate">{symbol}</span>
+                  <span className="block text-ice-faint text-[13px] truncate">{listed?.name ?? t.name ?? shortHex(t.token)}</span>
+                </span>
+                <span className={cn('text-ice-text tabular-nums text-[14px] shrink-0', !listed && 'text-ice-muted')}>
+                  {formatTokenBalance(t.balance, decimals)}
+                </span>
+                <ChevronRight className="w-4 h-4 text-ice-faint shrink-0" />
+              </Link>
+            );
+          })}
+          {tokens.length > MAX_TOKENS && (
+            <button type="button" onClick={() => setShowAllTokens((s) => !s)} className="w-full min-h-[48px] text-ice-accent text-[14px] font-medium hover:bg-ice-line/[0.05] transition-colors">
+              {showAllTokens ? 'Show fewer' : `Show all ${tokens.length}`}
+            </button>
+          )}
+        </DetailList>
+      )}
+
+      {/* Native totals */}
+      {native && (
+        <DetailList className="mb-4" title="AVAX flow">
+          <DetailRow label="Received">{formatAvax(native.total_in)} AVAX</DetailRow>
+          <DetailRow label="Sent">{formatAvax(native.total_out)} AVAX</DetailRow>
+          <DetailRow label="Spent on gas">{formatAvax(native.total_gas)} AVAX</DetailRow>
+        </DetailList>
+      )}
+
+      {/* Activity, read from this address's side */}
+      <section>
+        <h3 className="text-ice-text font-semibold text-[15px] px-1 mb-2">Activity</h3>
+        {history.error && history.transactions.length === 0 ? (
+          <ErrorState message={history.error} onRetry={history.refetch} />
+        ) : !history.loading && history.transactions.length === 0 ? (
+          <EmptyState icon={<Wallet className="w-6 h-6" />} title="No transactions yet" message="Activity from this address shows up here." />
+        ) : (
+          <ActivityList
+            transactions={history.transactions}
+            loading={history.loading}
+            error={null}
+            onRefetch={history.refetch}
+            hasMore={history.hasMore}
+            onLoadMore={history.loadMore}
+          />
+        )}
+      </section>
     </div>
   );
 }

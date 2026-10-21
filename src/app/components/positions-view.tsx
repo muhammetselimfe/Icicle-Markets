@@ -1,44 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Wallet, ArrowRight } from 'lucide-react';
-import { useAccount } from 'wagmi';
-import { usePrivy, useLogin } from '@privy-io/react-auth';
+import { ArrowRight, Target } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { useOptionsMarkets } from '@/app/hooks/useOptionsMarkets';
 import { useOptionsPositions } from '@/app/hooks/useOptionsPositions';
 import { MarketState, type PositionDisplay, type MarketDisplay } from '@/app/types/options';
 import { formatUsdc } from '@/app/utils/options';
 import { ClaimTestUsdcButton } from '@/app/components/options-view';
+import { AssetLogo, MarketStateBadge } from '@/app/components/option-market-card';
+import { EmptyState } from '@/app/components/shell/empty-state';
 // One card implementation for both the trade page and this page, so a position shows the
 // same numbers (and the same slippage-protected close) wherever the user sees it.
 import { PositionCard, ClaimAllButton } from '@/app/components/options/trade-position-card';
 
 function Skeleton({ className = '' }: { className?: string }) {
   return <div className={`animate-pulse bg-white/10 rounded ${className}`} />;
-}
-
-function StateBadge({ state, label }: { state: MarketState; label: string }) {
-  const colors: Record<number, string> = {
-    [MarketState.Trading]: 'bg-ice-up/[0.08] text-ice-up border border-ice-up/20',
-    [MarketState.SettlementOpen]: 'bg-yellow-500/10 text-yellow-400',
-    [MarketState.PendingOps]: 'bg-yellow-500/10 text-yellow-400',
-    [MarketState.FinalizedPrimary]: 'bg-ice-line/[0.06] text-ice-faint',
-    [MarketState.FinalizedSecondary]: 'bg-ice-line/[0.06] text-ice-faint',
-    [MarketState.FailedPendingManual]: 'bg-ice-down/10 text-ice-down',
-  };
-  return (
-    <span className={cn('px-2.5 py-1 rounded-md font-mono text-[11px]', colors[state] ?? 'bg-ice-line/[0.06] text-ice-faint')}>
-      {label}
-    </span>
-  );
-}
-
-function AssetLogo({ src, symbol }: { src: string; symbol: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-bold">{symbol.slice(0, 2)}</div>;
-  }
-  return <img src={src} alt={symbol} className="w-8 h-8 rounded-full" onError={() => setFailed(true)} />;
 }
 
 const isFinalizedState = (s: MarketState) =>
@@ -75,70 +51,41 @@ function PortfolioSummary({ positions }: { positions: PositionDisplay[] }) {
   const settledCount = positions.length - activePositions.length;
 
   return (
-    <div className="mb-6 space-y-4">
-      {/* Row 1: ClaimTestUsdcButton (includes balance display) */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 bg-ice-surface border border-ice-line/15 rounded-xl">
+    <div className="mb-6 space-y-3">
+      <div className="flex items-center gap-3 min-h-[44px] px-3 rounded-xl bg-ice-line/[0.05] text-[13px]">
+        <span className="inline-flex items-center gap-2 text-ice-muted">
+          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 shrink-0" />
+          Fuji testnet
+        </span>
         <ClaimTestUsdcButton />
       </div>
 
-      {/* Row 2: Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total Value" value={formatUsdc(totalValue)} accent="ice" />
+        <StatCard label="Total value" value={formatUsdc(totalValue)} />
         <StatCard
           label="Unrealized P&L"
-          value={`${unrealizedUp ? '+' : ''}$${unrealizedDollars.toFixed(2)} (${unrealizedUp ? '+' : ''}${unrealizedPercent.toFixed(1)}%)`}
+          value={`${unrealizedUp ? '+' : '−'}$${Math.abs(unrealizedDollars).toFixed(2)}`}
+          detail={`${unrealizedUp ? '+' : '−'}${Math.abs(unrealizedPercent).toFixed(1)}%`}
           valueColor={unrealizedUp ? 'text-ice-up' : 'text-ice-down'}
-          accent={unrealizedUp ? 'green' : 'red'}
         />
         <StatCard
           label="Realized P&L"
-          value={`${realizedUp ? '+' : ''}$${realizedDollars.toFixed(2)} (${realizedUp ? '+' : ''}${realizedPercent.toFixed(1)}%)`}
+          value={`${realizedUp ? '+' : '−'}$${Math.abs(realizedDollars).toFixed(2)}`}
+          detail={`${realizedUp ? '+' : '−'}${Math.abs(realizedPercent).toFixed(1)}%`}
           valueColor={realizedUp ? 'text-ice-up' : 'text-ice-down'}
-          accent={realizedUp ? 'green' : 'red'}
         />
-        <StatCard label="Positions">
-          <div className="mt-1 space-y-0.5">
-            <div className="text-ice-text font-mono font-medium text-[15px]">
-              {activePositions.length} Active
-            </div>
-            <div className="text-ice-faint font-mono text-[13px]">
-              {settledCount} Settled
-            </div>
-          </div>
-        </StatCard>
+        <StatCard label="Positions" value={`${activePositions.length} active`} detail={`${settledCount} settled`} />
       </div>
     </div>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  valueColor,
-  accent,
-  children,
-}: {
-  label: string;
-  value?: string;
-  valueColor?: string;
-  accent?: 'ice' | 'green' | 'red';
-  children?: React.ReactNode;
-}) {
-  const accentClasses: Record<string, string> = {
-    ice: 'border-l-2 border-l-ice-accent/40',
-    green: 'border-l-2 border-l-ice-up/40',
-    red: 'border-l-2 border-l-ice-down/40',
-  };
+function StatCard({ label, value, detail, valueColor }: { label: string; value: string; detail?: string; valueColor?: string }) {
   return (
-    <div className={cn('bg-ice-surface border border-ice-line/15 rounded-xl px-4 py-3', accent && accentClasses[accent])}>
-      <div className="text-ice-faint font-mono uppercase text-[10px] tracking-[0.8px]">
-        {label}
-      </div>
-      {children ?? (
-        <div className={cn('font-mono font-medium mt-1 text-[16px]', valueColor ?? 'text-ice-text')}>
-          {value}
-        </div>
-      )}
+    <div className="rounded-2xl bg-ice-surface border border-ice-line/15 p-4 flex flex-col gap-1.5">
+      <span className="text-ice-muted text-[13px]">{label}</span>
+      <span className={cn('font-semibold tabular-nums leading-none tracking-[-0.01em] text-[20px]', valueColor ?? 'text-ice-text')}>{value}</span>
+      {detail && <span className={cn('text-[12px] tabular-nums', valueColor ?? 'text-ice-faint')}>{detail}</span>}
     </div>
   );
 }
@@ -149,27 +96,23 @@ function MarketGroup({ marketId, market, positions }: { marketId: number; market
   const stateLabel =
     market?.stateLabel ?? (isFinalizedState(state) ? 'Finalized' : state === MarketState.Trading ? 'Live' : 'Pending');
   return (
-    <div className="bg-ice-surface/40 border border-ice-line/10 rounded-2xl p-3 sm:p-4">
+    <div className="rounded-2xl bg-ice-surface border border-ice-line/15 p-3 sm:p-4">
       <div className="flex items-center gap-3 mb-3">
-        {market ? (
-          <AssetLogo src={market.assetLogo} symbol={market.assetSymbol} />
-        ) : (
-          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white text-xs font-bold">?</div>
-        )}
+        <AssetLogo src={market?.assetLogo ?? ''} symbol={market?.assetSymbol ?? '?'} />
         <div className="flex-1 min-w-0">
           <div className="text-ice-text font-semibold text-[15px]">
             {market ? `${market.assetSymbol}/USD` : `Market #${marketId}`}
           </div>
-          <div className="text-ice-faint font-mono text-[12px]">
+          <div className="text-ice-muted text-[13px] tabular-nums">
             Market #{marketId} · {positions.length} {positions.length === 1 ? 'position' : 'positions'}
           </div>
         </div>
-        <StateBadge state={state} label={stateLabel} />
+        <MarketStateBadge state={state} label={stateLabel} />
         <Link
-          to={`/options/trade/${marketId}`}
-          className="hidden sm:flex items-center gap-1 text-ice-muted hover:text-ice-text transition-colors text-[13px]"
+          to={`/predict/${marketId}`}
+          className="hidden sm:inline-flex items-center gap-1 min-h-[44px] px-2 text-ice-accent text-[14px] font-medium"
         >
-          Open <ArrowRight className="w-3.5 h-3.5" />
+          Open <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -203,18 +146,8 @@ function SectionHeading({ dotClass, children }: { dotClass: string; children: Re
   );
 }
 
-export function PositionsView() {
-  const { login } = useLogin();
-  const { authenticated, logout } = usePrivy();
-  const { isConnected } = useAccount();
-
-  const handleLogin = async () => {
-    if (authenticated) {
-      await logout();
-    }
-    login();
-  };
-
+/** Options positions grouped by market. Rendered inside the Portfolio tab, which owns the sign-in gate. */
+export function PositionsContent() {
   const { markets } = useOptionsMarkets();
   const { positions, loading: positionsLoading, error: positionsError } = useOptionsPositions();
 
@@ -231,33 +164,8 @@ export function PositionsView() {
   const settledFlat = settled.flatMap((g) => g.positions);
 
   return (
-    <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
-      {!isConnected ? (
-        <div className="flex items-center justify-center min-h-[65vh]">
-          <div className="w-full max-w-md rounded-2xl bg-ice-surface border border-ice-line/15 p-10 text-center">
-            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
-              <Wallet className="w-8 h-8 text-ice-accent" />
-            </div>
-            <h2 className="text-ice-text text-xl font-bold mb-3">
-              Sign in to view your positions
-            </h2>
-            <p className="text-ice-muted mb-8 leading-relaxed text-[15px]">
-              Your open and settled options positions, P&L, and claimable payouts live here.
-            </p>
-            <button
-              onClick={() => handleLogin()}
-              className="px-6 py-3 rounded-xl font-semibold transition-transform hover:-translate-y-px text-[15px]"
-              style={{
-                background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)',
-                color: '#06223a',
-                boxShadow: '0 2px 16px rgba(139,228,255,0.3)',
-              }}
-            >
-              Sign In
-            </button>
-          </div>
-        </div>
-      ) : positionsLoading ? (
+    <div>
+      {positionsLoading ? (
         <div className="space-y-4">
           <div className="flex gap-3">
             <Skeleton className="h-12 w-full rounded-xl" />
@@ -290,12 +198,12 @@ export function PositionsView() {
           )}
 
           {positions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center p-12 rounded-2xl bg-ice-surface border border-ice-line/15 text-ice-muted text-[15px] gap-3">
-              <span>No open positions yet.</span>
-              <Link to="/options" className="text-ice-accent hover:underline text-[14px]">
-                Browse markets to place your first trade
-              </Link>
-            </div>
+            <EmptyState
+              icon={<Target className="w-6 h-6" />}
+              title="No positions yet"
+              message="Pick a price range on a live market to open your first position."
+              action={{ label: 'Browse markets', href: '/predict' }}
+            />
           ) : (
             <div className="space-y-8">
               {active.length > 0 && (

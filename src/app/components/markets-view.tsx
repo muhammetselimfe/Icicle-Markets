@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Star, Flame, Lock, TrendingUp, TrendingDown, Target, ArrowRight } from 'lucide-react';
+import { PageHeader } from '@/app/components/shell/page-header';
 import { cn } from '@/app/components/ui/utils';
 import { ErrorState, EmptyState } from '@/app/components/ui/data-states';
 import { useMarketTokens, useMarketStats, useAvaxPrice, type TokenData } from '@/app/hooks/useTokenPrices';
 import { formatUSD } from '@/app/utils/formatters';
 import { type TokenCategory } from '@/app/data/markets-tokens';
 import { SwapModal } from '@/app/components/swap-modal';
-import { useOptionsMarkets } from '@/app/hooks/useOptionsMarkets';
-import { MarketState } from '@/app/types/options';
-import { OptionMarketCard } from '@/app/components/option-market-card';
 
 // Loading skeleton component
 function Skeleton({ className = '' }: { className?: string }) {
@@ -91,11 +89,11 @@ function StatCard({
 }) {
   return (
     <div className="flex-1 rounded-2xl bg-ice-surface border border-ice-line/15 p-4 lg:p-[18px] flex flex-col gap-2.5">
-      <span className="font-mono text-ice-faint uppercase tracking-wide text-[10px]" style={{ letterSpacing: '1px' }}>
+      <span className="text-ice-muted text-[13px]">
         {label}
       </span>
       <div className="flex items-end justify-between gap-2">
-        <span className="font-mono font-semibold text-ice-text leading-none text-[22px]">
+        <span className="font-semibold tabular-nums text-ice-text leading-none tracking-[-0.01em] text-[22px]">
           {value}
         </span>
         {delta && (
@@ -112,7 +110,7 @@ function StatCard({
             ) : (
               <TrendingDown className="w-3 h-3 text-ice-down" />
             )}
-            <span className={cn('font-mono', count ? 'text-ice-up' : deltaUp ? 'text-ice-up' : 'text-ice-down', 'text-[12px]')}>
+            <span className={cn('tabular-nums font-medium', count ? 'text-ice-up' : deltaUp ? 'text-ice-up' : 'text-ice-down', 'text-[12px]')}>
               {delta}
             </span>
           </div>
@@ -129,21 +127,21 @@ function StatsStrip({ tokens }: { tokens: TokenData[] }) {
   const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 
   return (
-    <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-8">
       <StatCard
-        label="Ecosystem Market Cap"
+        label="Ecosystem market cap"
         value={formatUSD(totalMarketCap)}
         delta={fmtPct(avgChange24h)}
         deltaUp={avgChange24h >= 0}
       />
-      <StatCard label="Ecosystem Volume 24h" value={formatUSD(total24hVolume)} />
+      <StatCard label="Ecosystem volume 24h" value={formatUSD(total24hVolume)} />
       <StatCard
-        label="AVAX Price"
+        label="AVAX price"
         value={avax.price > 0 ? `$${avax.price.toFixed(2)}` : '—'}
         delta={avax.price > 0 ? fmtPct(avax.change24h) : undefined}
         deltaUp={avax.change24h >= 0}
       />
-      <StatCard label="Tracked Assets" value={String(tokenCount)} delta="live" count />
+      <StatCard label="Tracked assets" value={String(tokenCount)} delta="live" count />
     </div>
   );
 }
@@ -158,14 +156,6 @@ export function MarketsView() {
 
   // Fetch data from curated list
   const { tokens, loading: tokensLoading, error: tokensError, refetch: refetchTokens } = useMarketTokens();
-
-  // Fetch active options markets for trending cards
-  const { markets: optionsMarkets, loading: optionsLoading } = useOptionsMarkets();
-  const liveOptions = optionsMarkets.filter(m => m.state === MarketState.Trading);
-  // Prefer live markets; fall back to the most recent so the section always shows.
-  const featuredOptions = (liveOptions.length > 0 ? liveOptions : [...optionsMarkets])
-    .sort((a, b) => b.marketId - a.marketId)
-    .slice(0, 3);
 
   const tabs = [
     { id: 'favorites', label: '', icon: Star, iconOnly: true },
@@ -227,75 +217,22 @@ export function MarketsView() {
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
-      {/* Market overview stats */}
+      <PageHeader
+        title="Markets"
+        subtitle="Prices, charts, and swaps for Avalanche tokens"
+        trailing={
+          <Link
+            to="/predict"
+            className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-ice-line/[0.07] text-ice-muted hover:text-ice-text transition-colors text-[14px]"
+          >
+            <Target className="w-4 h-4" />
+            <span className="hidden sm:inline">Prediction markets</span>
+            <span className="sm:hidden">Predict</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        }
+      />
       {!tokensError && <StatsStrip tokens={tokens} />}
-
-      {/* Prediction Markets Section */}
-      {(featuredOptions.length > 0 || optionsLoading) && (
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 shrink-0 rounded-[9px] bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
-                <Target className="w-[18px] h-[18px] text-ice-accent" />
-              </div>
-              <div className="min-w-0">
-                <div className="text-ice-text font-bold text-[18px]">
-                  Prediction Markets
-                </div>
-                <p className="text-ice-muted text-[13px]">
-                  Bet on where asset prices will land. Pick a range, trade options, win if you're right.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/options')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-ice-surface border border-ice-line/15 text-ice-muted hover:text-ice-text hover:border-ice-line/30 transition-colors text-[13px]"
-            >
-              View all markets
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {optionsLoading
-              ? Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="bg-ice-surface border border-ice-line/15 rounded-2xl p-[18px] space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="w-9 h-9 rounded-full" />
-                      <div className="flex-1">
-                        <Skeleton className="h-4 w-20 mb-1.5" />
-                        <Skeleton className="h-3 w-14" />
-                      </div>
-                      <Skeleton className="h-5 w-16" />
-                    </div>
-                    <Skeleton className="h-[68px] w-full" />
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                  </div>
-                ))
-              : featuredOptions.map(m => (
-                  <OptionMarketCard
-                    key={m.marketId}
-                    market={m}
-                    onClick={() => navigate(`/options/trade/${m.marketId}`)}
-                  />
-                ))}
-          </div>
-        </div>
-      )}
-
-      {/* Spot Trading Section */}
-      <div className="flex items-center gap-3 mb-4 min-w-0">
-        <div className="w-9 h-9 shrink-0 rounded-[9px] bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
-          <TrendingUp className="w-[18px] h-[18px] text-ice-accent" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-ice-text font-bold text-[18px]">
-            Spot Trading
-          </div>
-          <p className="text-ice-muted text-[13px]">
-            Swap Avalanche tokens instantly. Browse prices, charts, and trade directly.
-          </p>
-        </div>
-      </div>
 
       {/* Pill-style Tabs */}
       <div className="flex items-center justify-between mb-5">

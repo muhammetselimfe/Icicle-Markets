@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, ChevronDown, ChevronUp, Settings, AlertTriangle, ExternalLink, Loader2, Check } from 'lucide-react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { X, ChevronDown, ChevronUp, ArrowDown, AlertTriangle, ExternalLink, Loader2, Check, Search, SlidersHorizontal } from 'lucide-react';
 import { useAccount, useBalance, useChainId, useReadContract } from 'wagmi';
-import { usePrivy, useLogin } from '@privy-io/react-auth';
 import { erc20Abi } from 'viem';
 import { formatUnits } from 'viem';
 import { cn } from '@/app/components/ui/utils';
+import { SegmentedControl } from '@/app/components/shell/segmented-control';
+import { useSignIn } from '@/app/components/shell/use-sign-in';
 import type { SwapToken } from '@/app/types/swap';
 import { SLIPPAGE_OPTIONS, DEFAULT_SLIPPAGE, MIN_SLIPPAGE, MAX_SLIPPAGE } from '@/app/types/swap';
 import { getTokensByChainId, getDefaultFromToken, getDefaultToToken, getTokenByAddress, isTokenListed } from '@/app/data/swap-tokens';
@@ -20,31 +22,98 @@ import { formatAmount, getAdapterName, WAVAX_ADDRESS, calculatePriceImpact } fro
 const WARN_IMPACT_PCT = 3;
 const HIGH_IMPACT_PCT = 15;
 
+const NATIVE_AVAX = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
 function formatUsdApprox(value: number): string {
   if (value < 0.01) return '<$0.01';
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// Token logo with fallback
-function TokenLogo({ token, size = 'md' }: { token: { symbol: string; logoUrl?: string }; size?: 'sm' | 'md' }) {
-  const sizeClass = size === 'sm' ? 'w-8 h-8' : 'w-10 h-10';
+function formatBalance(value: bigint, decimals: number): string {
+  const n = parseFloat(formatUnits(value, decimals));
+  if (n === 0) return '0';
+  if (n < 0.0001) return '<0.0001';
+  return n.toLocaleString('en-US', { maximumFractionDigits: n < 1 ? 6 : 4 });
+}
 
+function TokenLogo({ token, className }: { token: { symbol: string; logoUrl?: string }; className?: string }) {
   if (token.logoUrl) {
-    return (
-      <img
-        src={token.logoUrl}
-        alt={token.symbol}
-        className={`${sizeClass} rounded-full bg-ice-line/[0.08]`}
-      />
-    );
+    return <img src={token.logoUrl} alt="" className={cn('rounded-full bg-ice-line/[0.08] shrink-0', className)} />;
   }
-
   return (
-    <div className={`${sizeClass} rounded-full bg-ice-line/[0.08] flex items-center justify-center text-ice-muted text-sm font-medium`}>
+    <div className={cn('rounded-full bg-ice-line/[0.08] flex items-center justify-center text-ice-muted text-[12px] font-semibold shrink-0', className)}>
       {token.symbol.slice(0, 2)}
     </div>
   );
 }
+
+// ── Sheet chrome ─────────────────────────────────────────────────────────────
+
+const ICON_BUTTON = 'w-9 h-9 rounded-full flex items-center justify-center text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors';
+
+/** Centered dialog on wide screens, bottom sheet on phones. */
+function Sheet({ onDismiss, children, label }: { onDismiss: () => void; children: ReactNode; label: string }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onDismiss();
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onDismiss]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center" role="dialog" aria-modal="true" aria-label={label}>
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onDismiss} />
+      <div
+        className="relative w-full md:max-w-[440px] max-h-[92vh] flex flex-col bg-ice-surface rounded-t-2xl md:rounded-2xl border border-ice-line/15 shadow-2xl shadow-black/40"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function SheetHeader({ leading, trailing }: { leading: ReactNode; trailing: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 h-16 border-b border-ice-line/10 shrink-0">
+      {leading}
+      <div className="flex items-center gap-1">{trailing}</div>
+    </div>
+  );
+}
+
+/** Inset grouped list row, as in a settings screen. */
+function DetailRow({ label, value, tone }: { label: string; value: ReactNode; tone?: 'warn' | 'danger' }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 min-h-[40px]">
+      <span className="text-ice-muted text-[14px]">{label}</span>
+      <span className={cn('text-[14px] tabular-nums text-right', tone === 'danger' ? 'text-ice-down font-semibold' : tone === 'warn' ? 'text-yellow-500' : 'text-ice-text')}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function Notice({ tone, children }: { tone: 'warn' | 'danger'; children: ReactNode }) {
+  return (
+    <div
+      className={cn(
+        'flex items-start gap-3 px-4 py-3 rounded-xl text-[14px] leading-snug',
+        tone === 'danger' ? 'bg-ice-down/[0.08] text-ice-down' : 'bg-yellow-500/[0.08] text-yellow-500',
+      )}
+    >
+      <AlertTriangle className="w-[18px] h-[18px] shrink-0 mt-px" />
+      <span className="flex-1">{children}</span>
+    </div>
+  );
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
 
 interface SwapModalProps {
   isOpen: boolean;
@@ -53,20 +122,12 @@ interface SwapModalProps {
 }
 
 export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
-  const { login } = useLogin();
-  const { authenticated, logout } = usePrivy();
+  const { signIn } = useSignIn();
   const chainId = useChainId();
   const { address, isConnected } = useAccount();
 
   const { switchForTab, isSwitching } = useChainSwitch();
   const isWrongChain = isConnected && chainId !== CHAIN_IDS.MAINNET;
-
-  const handleLogin = async () => {
-    if (authenticated) {
-      await logout();
-    }
-    login();
-  };
 
   const tokens = useMemo(() => getTokensByChainId(chainId), [chainId]);
 
@@ -132,29 +193,21 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   // Swap execution
   const { step, txHash, error: execError, execute, reset: resetExecution } = useSwapExecution();
 
-  // Check if token is native AVAX
-  const isFromNative = fromToken.address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+  const isFromNative = fromToken.address.toLowerCase() === NATIVE_AVAX;
 
-  // Fetch native AVAX balance
   const { data: nativeBalance } = useBalance({
     address,
-    query: {
-      enabled: !!address,
-    },
+    query: { enabled: !!address },
   });
 
-  // Fetch ERC20 balance directly via contract call
   const { data: erc20BalanceRaw } = useReadContract({
     address: fromToken.address as `0x${string}`,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: {
-      enabled: !isFromNative && !!address,
-    },
+    query: { enabled: !isFromNative && !!address },
   });
 
-  // Combine into a consistent format
   const fromBalance = useMemo(() => {
     if (isFromNative) {
       return nativeBalance;
@@ -185,8 +238,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
   const exchangeRate = useMemo(() => {
     if (!fromAmount || !toAmount || parseFloat(fromAmount) === 0) return null;
-    const rate = parseFloat(toAmount) / parseFloat(fromAmount);
-    return rate;
+    return parseFloat(toAmount) / parseFloat(fromAmount);
   }, [fromAmount, toAmount]);
 
   // USD reference prices (CoinGecko) for dollar values and price impact
@@ -216,7 +268,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   // A new quote means a new decision
   useEffect(() => { setHighImpactAccepted(false); }, [quote]);
 
-  // Get route path with token symbols and adapters
+  // Route path with token symbols and adapters
   const routeSteps = useMemo(() => {
     if (!quote?.path || quote.path.length === 0 || !quote.adapters) return [];
 
@@ -250,27 +302,31 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
     return steps;
   }, [quote, chainId]);
 
-  // Check if user has sufficient balance
   const hasInsufficientBalance = useMemo(() => {
     if (!fromBalance || !fromAmount || fromAmount === '') return false;
     const amountWei = BigInt(Math.floor(parseFloat(fromAmount) * 10 ** fromToken.decimals));
     return amountWei > fromBalance.value;
   }, [fromBalance, fromAmount, fromToken.decimals]);
 
+  const swapDirection = () => {
+    const temp = fromToken;
+    setFromToken(toToken);
+    setToToken(temp);
+    setFromAmount('');
+  };
+
   const handleModeChange = (newMode: 'buy' | 'sell') => {
     if (newMode !== mode) {
       setMode(newMode);
-      const temp = fromToken;
-      setFromToken(toToken);
-      setToToken(temp);
-      setFromAmount('');
+      swapDirection();
     }
   };
 
   const handleMaxClick = () => {
     if (fromBalance) {
       const formatted = formatUnits(fromBalance.value, fromBalance.decimals);
-      if (fromToken.address === '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE') {
+      if (isFromNative) {
+        // Keep some AVAX back for gas.
         const max = Math.max(0, parseFloat(formatted) - 0.1);
         setFromAmount(max.toFixed(6));
       } else {
@@ -314,7 +370,7 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
   const handleSwapClick = async () => {
     if (!isConnected) {
-      handleLogin();
+      signIn();
       return;
     }
     if (isWrongChain) {
@@ -353,17 +409,17 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
   }, [tokens, showTokenSelect, fromToken.address, toToken.address]);
 
   const getButtonText = () => {
-    if (!isConnected) return 'Sign In';
-    if (isWrongChain) return isSwitching ? 'Switching...' : 'Switch to Avalanche';
-    if (!fromAmount || fromAmount === '0') return 'Enter Amount';
-    if (hasInsufficientBalance) return 'Insufficient Balance';
-    if (quoteLoading) return 'Getting Quote...';
-    if (quoteError) return 'No Route Found';
-    if (isHighImpact && !highImpactAccepted) return 'Price Impact Too High';
-    if (step === 'approving') return 'Approving...';
-    if (step === 'swapping') return 'Processing...';
-    if (step === 'success') return 'Success!';
-    if (step === 'error') return 'Try Again';
+    if (!isConnected) return 'Sign In to Trade';
+    if (isWrongChain) return isSwitching ? 'Switching…' : 'Switch to Avalanche';
+    if (!fromAmount || fromAmount === '0') return 'Enter an amount';
+    if (hasInsufficientBalance) return `Not enough ${fromToken.symbol}`;
+    if (quoteLoading) return 'Getting quote…';
+    if (quoteError) return 'No route found';
+    if (isHighImpact && !highImpactAccepted) return 'Price impact too high';
+    if (step === 'approving') return `Approving ${fromToken.symbol}…`;
+    if (step === 'swapping') return 'Confirming…';
+    if (step === 'success') return 'Done';
+    if (step === 'error') return 'Try again';
     return mode === 'buy' ? `Buy ${toToken.symbol}` : `Sell ${fromToken.symbol}`;
   };
 
@@ -382,166 +438,152 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
 
   if (!isOpen) return null;
 
-  // Success state
+  const slippageLabel = `${(slippage / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })}%`;
+
+  // ── Success ──────────────────────────────────────────────────────────────
   if (step === 'success' && txHash) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
-        <div className="relative border border-ice-line/15 bg-ice-surface w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
-          <div className="relative z-10 p-6 md:p-8 text-center">
-            <div className="w-20 h-20 mx-auto mb-6 bg-green-500/10 rounded-2xl flex items-center justify-center">
-              <Check className="w-10 h-10 text-green-500" />
-            </div>
-            <h2
-              className="text-ice-text font-medium mb-2 text-[20px]"
+      <Sheet onDismiss={handleClose} label="Swap complete">
+        <div className="p-6 md:p-8 text-center">
+          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-ice-up/[0.12] flex items-center justify-center">
+            <Check className="w-8 h-8 text-ice-up" strokeWidth={2.5} />
+          </div>
+          <h2 className="text-ice-text font-bold text-[22px] mb-1.5">Swap complete</h2>
+          <p className="text-ice-muted text-[15px] mb-7">
+            {fromAmount} {fromToken.symbol} for {toAmount || '…'} {toToken.symbol}
+          </p>
+          <div className="space-y-2.5">
+            <button
+              onClick={handleClose}
+              className="w-full min-h-[52px] rounded-xl bg-ice-accent font-semibold text-[16px] transition-opacity hover:opacity-90"
+              style={{ color: '#06223a' }}
             >
-              Transaction Successful
-            </h2>
-            <p
-              className="text-ice-muted mb-6 text-[15px]"
-            >
-              Your swap has been confirmed
-            </p>
-
+              Done
+            </button>
             <a
               href={`https://snowtrace.io/tx/${txHash}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-8 text-[14px]"
+              className="w-full min-h-[48px] rounded-xl inline-flex items-center justify-center gap-2 text-ice-accent hover:bg-ice-line/[0.06] transition-colors text-[15px] font-medium"
             >
               View on Snowtrace <ExternalLink className="w-4 h-4" />
             </a>
-
-            <button
-              onClick={handleClose}
-              className="w-full bg-ice-surface2 hover:bg-ice-line/[0.08] text-ice-text py-4 rounded-xl font-medium transition-colors text-[15px]"
-            >
-              Close
-            </button>
           </div>
         </div>
-      </div>
+      </Sheet>
     );
   }
 
-  // Token select modal
+  // ── Token picker ─────────────────────────────────────────────────────────
   if (showTokenSelect) {
+    const dismiss = () => {
+      setShowTokenSelect(null);
+      setShowAllTokens(false);
+      setTokenSearch('');
+    };
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/70" onClick={() => { setShowTokenSelect(null); setShowAllTokens(false); }} />
-        <div className="relative border border-ice-line/15 bg-ice-surface w-full max-w-md rounded-2xl max-h-[90vh] flex flex-col">
-          <div className="relative z-10 flex flex-col max-h-full">
-            <div className="flex items-center justify-between p-5 border-b border-ice-line/15">
-              <h2
-                className="text-ice-text font-medium text-[16px]"
-              >
-                Select Token
-              </h2>
-              <button
-                onClick={() => { setShowTokenSelect(null); setShowAllTokens(false); }}
-                className="text-ice-muted hover:text-ice-text transition-colors p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-4">
-              <input
-                type="text"
-                value={tokenSearch}
-                onChange={(e) => setTokenSearch(e.target.value)}
-                placeholder="Search token..."
-                className="w-full bg-ice-surface2 px-4 py-3 rounded-xl text-ice-text placeholder:text-ice-faint focus:outline-none focus:ring-1 focus:ring-white/20 text-[15px]"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto max-h-80 md:max-h-96">
-              {filteredTokens.map((token) => (
-                <button
-                  key={token.address}
-                  onClick={() => handleSelectToken(token)}
-                  className="w-full flex items-center gap-4 px-5 py-3 hover:bg-ice-line/[0.06] transition-colors min-h-[56px]"
-                >
-                  <TokenLogo token={token} size="md" />
-                  <div className="text-left">
-                    <div className="text-ice-text font-medium text-[15px]">
-                      {token.symbol}
-                    </div>
-                    <div className="text-ice-faint text-[13px]">
-                      {token.name}
-                    </div>
-                  </div>
-                </button>
-              ))}
-
-              {!tokenSearch && !showAllTokens && filteredTokens.length < allTokensCount && (
-                <button
-                  onClick={() => setShowAllTokens(true)}
-                  className="w-full py-4 text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.06] transition-colors border-t border-ice-line/15 text-[14px]"
-                >
-                  Show all {allTokensCount} tokens
-                </button>
-              )}
-            </div>
+      <Sheet onDismiss={dismiss} label="Choose a token">
+        <SheetHeader
+          leading={<h2 className="text-ice-text font-semibold text-[17px]">{showTokenSelect === 'from' ? 'Pay with' : 'Receive'}</h2>}
+          trailing={
+            <button onClick={dismiss} className={ICON_BUTTON} aria-label="Close">
+              <X className="w-5 h-5" />
+            </button>
+          }
+        />
+        <div className="px-4 pt-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-ice-faint pointer-events-none" />
+            <input
+              type="text"
+              value={tokenSearch}
+              onChange={(e) => setTokenSearch(e.target.value)}
+              placeholder="Search"
+              autoFocus
+              aria-label="Search tokens"
+              spellCheck={false}
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="w-full bg-ice-line/[0.07] focus:bg-ice-surface2 rounded-xl pl-11 pr-4 min-h-[44px] text-ice-text placeholder:text-ice-faint outline-none transition-colors text-[16px]"
+            />
           </div>
         </div>
-      </div>
+        <div className="flex-1 overflow-y-auto py-2 min-h-[240px] max-h-[60vh]">
+          {filteredTokens.length === 0 && <p className="px-5 py-6 text-center text-ice-faint text-[14px]">No tokens match</p>}
+          {filteredTokens.map((token) => (
+            <button
+              key={token.address}
+              onClick={() => handleSelectToken(token)}
+              className="w-full flex items-center gap-4 px-5 min-h-[56px] hover:bg-ice-line/[0.06] transition-colors text-left"
+            >
+              <TokenLogo token={token} className="w-9 h-9" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-ice-text font-semibold text-[15px]">{token.symbol}</span>
+                <span className="block text-ice-faint text-[13px] truncate">{token.name}</span>
+              </span>
+            </button>
+          ))}
+          {!tokenSearch && !showAllTokens && filteredTokens.length < allTokensCount && (
+            <button
+              onClick={() => setShowAllTokens(true)}
+              className="w-full min-h-[48px] text-ice-accent hover:bg-ice-line/[0.06] transition-colors text-[14px] font-medium"
+            >
+              Show all {allTokensCount} tokens
+            </button>
+          )}
+        </div>
+      </Sheet>
     );
   }
+
+  // ── Trade ────────────────────────────────────────────────────────────────
+  const disabled = isButtonDisabled();
+  const working = step === 'approving' || step === 'swapping';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
-      <div className="relative border border-ice-line/15 bg-ice-surface w-full max-w-md rounded-2xl max-h-[90vh] overflow-y-auto">
-        <div className="relative z-10">
-          {/* Header with Buy/Sell toggle */}
-          <div className="flex items-center justify-between p-4 border-b border-ice-line/15">
-            <div className="flex gap-1 p-1 bg-ice-surface2 rounded-xl">
-              <button
-                onClick={() => handleModeChange('buy')}
-                className={cn(
-                  "px-6 py-2 rounded-lg transition-all font-medium",
-                  mode === 'buy'
-                    ? "bg-green-500/20 text-green-500"
-                    : "text-ice-muted hover:text-ice-text", 'text-[14px]')}
-              >
-                Buy
-              </button>
-              <button
-                onClick={() => handleModeChange('sell')}
-                className={cn(
-                  "px-6 py-2 rounded-lg transition-all font-medium",
-                  mode === 'sell'
-                    ? "bg-red-500/20 text-red-500"
-                    : "text-ice-muted hover:text-ice-text", 'text-[14px]')}
-              >
-                Sell
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={cn(
-                  "p-2 rounded-lg transition-colors",
-                  showSettings ? "text-ice-text bg-ice-line/[0.08]" : "text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.06]"
-                )}
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleClose}
-                className="text-ice-muted hover:text-ice-text transition-colors p-2"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+    <Sheet onDismiss={handleClose} label="Trade">
+      <SheetHeader
+        leading={
+          <SegmentedControl
+            tone="elevated"
+            aria-label="Trade direction"
+            value={mode}
+            onChange={handleModeChange}
+            segments={[
+              { id: 'buy', label: 'Buy' },
+              { id: 'sell', label: 'Sell' },
+            ]}
+            className="min-h-[40px]"
+          />
+        }
+        trailing={
+          <>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              aria-expanded={showSettings}
+              className={cn(
+                'h-9 pl-2.5 pr-3 rounded-full flex items-center gap-1.5 text-[13px] font-medium transition-colors',
+                showSettings ? 'bg-ice-line/[0.12] text-ice-text' : 'text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08]',
+              )}
+              aria-label={`Slippage tolerance ${slippageLabel}`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="tabular-nums">{slippageLabel}</span>
+            </button>
+            <button onClick={handleClose} className={ICON_BUTTON} aria-label="Close">
+              <X className="w-5 h-5" />
+            </button>
+          </>
+        }
+      />
 
-          {/* Settings Panel */}
-          {showSettings && (
-            <div className="p-4 border-b border-ice-line/15 bg-ice-surface">
-              <div className="text-ice-muted mb-3 text-[13px]">
-                Slippage Tolerance
+      <div className="flex-1 overflow-y-auto">
+        {showSettings && (
+          <div className="px-4 pt-4">
+            <div className="rounded-xl bg-ice-line/[0.05] p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-ice-text text-[14px] font-medium">Slippage tolerance</span>
+                <span className="text-ice-faint text-[12px]">Max price movement you accept</span>
               </div>
               <div className="flex gap-2">
                 {SLIPPAGE_OPTIONS.map((option) => (
@@ -549,269 +591,228 @@ export function SwapModal({ isOpen, onClose, initialToToken }: SwapModalProps) {
                     key={option.value}
                     onClick={() => handleSlippageChange(option.value)}
                     className={cn(
-                      "px-4 py-2 rounded-lg transition-all font-medium",
+                      'flex-1 min-h-[40px] rounded-lg text-[14px] font-medium transition-colors tabular-nums',
                       slippage === option.value && !customSlippage
-                        ? "bg-ice-line/[0.08] text-ice-text"
-                        : "bg-ice-surface2 text-ice-muted hover:text-ice-text", 'text-[14px]')}
+                        ? 'bg-ice-accent/[0.15] text-ice-accent'
+                        : 'bg-ice-line/[0.07] text-ice-muted hover:text-ice-text',
+                    )}
                   >
                     {option.label}
                   </button>
                 ))}
-                <div className="flex-1 relative">
+                <div className="relative flex-[1.4]">
                   <input
                     type="text"
+                    inputMode="decimal"
                     value={customSlippage}
                     onChange={(e) => handleCustomSlippageChange(e.target.value)}
                     placeholder="Custom"
-                    className="w-full bg-ice-surface2 rounded-lg px-3 py-2 text-ice-text placeholder:text-ice-faint focus:outline-none focus:ring-1 focus:ring-white/20 text-[14px]"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ice-faint text-[14px]">%</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Pay Section */}
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-ice-muted text-[14px]">
-                {mode === 'buy' ? 'You pay' : 'You sell'}
-              </span>
-              {fromBalance && (
-                <button
-                  onClick={handleMaxClick}
-                  className="text-ice-muted hover:text-ice-text transition-colors text-[13px]"
-                >
-                  Balance: {parseFloat(formatUnits(fromBalance.value, fromBalance.decimals)).toFixed(4)}
-                </button>
-              )}
-            </div>
-            <div className="bg-ice-surface2 p-4 rounded-xl">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowTokenSelect('from')}
-                  className="flex items-center gap-3 bg-ice-line/[0.08] px-4 py-2.5 rounded-lg hover:bg-ice-line/[0.1] transition-colors"
-                >
-                  <TokenLogo token={fromToken} size="sm" />
-                  <span className="text-ice-text font-medium text-[16px]">
-                    {fromToken.symbol}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-ice-muted" />
-                </button>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={fromAmount}
-                  onChange={(e) => setFromAmount(e.target.value)}
-                  placeholder="0"
-                  className="flex-1 bg-transparent text-ice-text text-right focus:outline-none min-w-0 font-medium text-2xl md:text-3xl"
-                />
-              </div>
-              {fromUsd !== null && (
-                <div className="text-right text-ice-faint mt-1 text-[12px]">
-                  ≈ {formatUsdApprox(fromUsd)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Receive Section */}
-          <div className="px-5 pb-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-ice-muted text-[14px]">
-                {mode === 'buy' ? 'You receive' : 'You get'}
-              </span>
-            </div>
-            <div className="bg-ice-surface2 p-4 rounded-xl">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setShowTokenSelect('to')}
-                  className="flex items-center gap-3 bg-ice-line/[0.08] px-4 py-2.5 rounded-lg hover:bg-ice-line/[0.1] transition-colors"
-                >
-                  <TokenLogo token={toToken} size="sm" />
-                  <span className="text-ice-text font-medium text-[16px]">
-                    {toToken.symbol}
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-ice-muted" />
-                </button>
-                <div className="flex-1 text-right min-w-0">
-                  {quoteLoading ? (
-                    <Loader2 className="w-8 h-8 animate-spin ml-auto text-ice-muted" />
-                  ) : (
-                    <span
-                      className={cn("font-medium text-2xl md:text-3xl", toAmount ? "text-ice-text" : "text-ice-faint")}
-                    >
-                      {toAmount || '0'}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {toUsd !== null && !quoteLoading && (
-                <div className="text-right text-ice-faint mt-1 text-[12px]">
-                  ≈ {formatUsdApprox(toUsd)}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Quote Summary */}
-          {quote && fromAmount && !quoteLoading && (
-            <div className="px-5 pb-4">
-              <div className="bg-ice-surface border border-ice-line/[0.06] p-4 rounded-xl space-y-3">
-                {exchangeRate && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-ice-muted text-[13px]">
-                      Rate
-                    </span>
-                    <span className="text-ice-text text-[13px]">
-                      1 {fromToken.symbol} = {exchangeRate.toFixed(4)} {toToken.symbol}
-                    </span>
-                  </div>
-                )}
-
-                {priceImpact !== null && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-ice-muted text-[13px]">
-                      Price impact
-                    </span>
-                    <span
-                      className={cn(
-                        priceImpact >= HIGH_IMPACT_PCT
-                          ? 'text-red-500 font-medium'
-                          : priceImpact >= WARN_IMPACT_PCT
-                          ? 'text-yellow-500'
-                          : 'text-ice-text', 'text-[13px]')}
-                    >
-                      {priceImpact < 0.01 ? '<0.01%' : `-${priceImpact.toFixed(2)}%`}
-                    </span>
-                  </div>
-                )}
-
-                {minReceived && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-ice-muted text-[13px]">
-                      Min. received
-                    </span>
-                    <span className="text-ice-text text-[13px]">
-                      {minReceived} {toToken.symbol}
-                    </span>
-                  </div>
-                )}
-
-                {/* Collapsible Route */}
-                {routeSteps.length > 0 && (
-                  <div className="pt-3 border-t border-ice-line/[0.06]">
-                    <button
-                      onClick={() => setShowRoute(!showRoute)}
-                      className="flex items-center justify-between w-full text-ice-muted hover:text-ice-text transition-colors text-[13px]"
-                    >
-                      <span>Route ({routeSteps.length} {routeSteps.length === 1 ? 'hop' : 'hops'})</span>
-                      {showRoute ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-
-                    {showRoute && (
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {routeSteps.map((step, index) => (
-                          <div key={index} className="flex items-center gap-1">
-                            {index === 0 && (
-                              <span className="text-ice-text px-2 text-[13px]">
-                                {step.fromToken.symbol}
-                              </span>
-                            )}
-                            <span className="text-ice-muted px-2 py-1 bg-ice-surface2 rounded text-[12px]">
-                              {step.protocol}
-                            </span>
-                            <span className="text-ice-text px-2 text-[13px]">
-                              {step.toToken.symbol}
-                            </span>
-                            {index < routeSteps.length - 1 && <span className="text-ice-faint">→</span>}
-                          </div>
-                        ))}
-                      </div>
+                    aria-label="Custom slippage percent"
+                    className={cn(
+                      'w-full min-h-[40px] rounded-lg pl-3 pr-8 text-[14px] text-ice-text placeholder:text-ice-faint outline-none tabular-nums transition-colors',
+                      customSlippage ? 'bg-ice-accent/[0.15]' : 'bg-ice-line/[0.07] focus:bg-ice-surface2',
                     )}
-                  </div>
-                )}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ice-faint text-[13px]">%</span>
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* High price impact — needs explicit acceptance */}
-          {isHighImpact && !isWrongChain && !quoteLoading && (
-            <div className="px-5 pb-4">
-              <label className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={highImpactAccepted}
-                  onChange={(e) => setHighImpactAccepted(e.target.checked)}
-                  className="mt-0.5 accent-red-500 shrink-0"
-                />
-                <span className="text-red-500 text-[13px]">
-                  This trade moves the price by about {priceImpact?.toFixed(1)}%, so you would receive well below
-                  market value. Try a smaller amount, or tick this box to proceed anyway.
-                </span>
-              </label>
-            </div>
-          )}
-
-          {/* Wrong Network Warning */}
-          {isWrongChain && (
-            <div className="px-5 pb-4">
-              <div className="flex items-center gap-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">
-                <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
-                <span className="text-yellow-500 text-[14px]">
-                  Switch to Avalanche network to trade
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Error Display */}
-          {!isWrongChain && (quoteError || execError) && (
-            <div className="px-5 pb-4">
-              <div className="flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
-                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-                <span className="text-red-500 text-[14px]">
-                  {quoteError || execError}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Action Button */}
-          <div className="p-4 md:p-5">
-            <button
-              onClick={handleSwapClick}
-              disabled={isButtonDisabled()}
+        {/* Amount cards */}
+        <div className="px-4 pt-4 relative">
+          <AmountCard
+            label={mode === 'buy' ? 'You pay' : 'You sell'}
+            token={fromToken}
+            onPickToken={() => setShowTokenSelect('from')}
+            usd={fromUsd}
+            aside={
+              fromBalance ? (
+                <button onClick={handleMaxClick} className="flex items-center gap-1.5 text-ice-muted hover:text-ice-text transition-colors text-[13px]">
+                  <span className="tabular-nums">{formatBalance(fromBalance.value, fromBalance.decimals)} {fromToken.symbol}</span>
+                  <span className="px-1.5 py-0.5 rounded-md bg-ice-accent/[0.15] text-ice-accent text-[11px] font-semibold">MAX</span>
+                </button>
+              ) : null
+            }
+          >
+            <input
+              type="text"
+              inputMode="decimal"
+              value={fromAmount}
+              onChange={(e) => setFromAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+              placeholder="0"
+              aria-label="Amount to pay"
               className={cn(
-                "w-full py-4 rounded-xl font-medium transition-all flex items-center justify-center gap-3 min-h-[52px]",
-                hasInsufficientBalance
-                  ? "bg-red-500/10 text-red-500 cursor-not-allowed"
-                  : isButtonDisabled()
-                  ? "bg-ice-surface2 text-ice-faint cursor-not-allowed"
-                  : mode === 'buy'
-                  ? "bg-green-500 text-ice-text hover:bg-green-600"
-                  : "bg-red-500 text-ice-text hover:bg-red-600", 'text-[15px]')}
+                'w-full bg-transparent text-ice-text placeholder:text-ice-faint outline-none min-w-0 font-semibold tabular-nums tracking-[-0.02em] text-[32px] leading-none',
+                hasInsufficientBalance && 'text-ice-down',
+              )}
+            />
+          </AmountCard>
+
+          {/* Direction */}
+          <div className="relative h-3 z-10">
+            <button
+              type="button"
+              onClick={swapDirection}
+              aria-label="Swap direction"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-ice-surface border-[3px] border-ice-surface ring-1 ring-ice-line/15 flex items-center justify-center text-ice-muted hover:text-ice-text transition-colors"
             >
-              {(step === 'approving' || step === 'swapping') && <Loader2 className="w-5 h-5 animate-spin" />}
-              {getButtonText()}
+              <ArrowDown className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Transaction Link */}
-          {txHash && step === 'swapping' && (
-            <div className="px-4 pb-4 text-center">
-              <a
-                href={`https://snowtrace.io/tx/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors text-[13px]"
-              >
-                View Transaction <ExternalLink className="w-4 h-4" />
-              </a>
+          <AmountCard
+            label={mode === 'buy' ? 'You receive' : 'You get'}
+            token={toToken}
+            onPickToken={() => setShowTokenSelect('to')}
+            usd={quoteLoading ? null : toUsd}
+          >
+            {quoteLoading ? (
+              <div className="h-8 flex items-center">
+                <Loader2 className="w-6 h-6 animate-spin text-ice-faint" />
+              </div>
+            ) : (
+              <div className={cn('font-semibold tabular-nums tracking-[-0.02em] text-[32px] leading-none truncate', toAmount ? 'text-ice-text' : 'text-ice-faint')}>
+                {toAmount || '0'}
+              </div>
+            )}
+          </AmountCard>
+        </div>
+
+        {/* Quote details */}
+        {quote && fromAmount && !quoteLoading && (
+          <div className="px-4 pt-3">
+            <div className="rounded-xl bg-ice-line/[0.05] py-1 divide-y divide-ice-line/[0.06]">
+              {exchangeRate && (
+                <DetailRow label="Rate" value={`1 ${fromToken.symbol} = ${exchangeRate.toFixed(4)} ${toToken.symbol}`} />
+              )}
+              {priceImpact !== null && (
+                <DetailRow
+                  label="Price impact"
+                  tone={priceImpact >= HIGH_IMPACT_PCT ? 'danger' : priceImpact >= WARN_IMPACT_PCT ? 'warn' : undefined}
+                  value={priceImpact < 0.01 ? '<0.01%' : `-${priceImpact.toFixed(2)}%`}
+                />
+              )}
+              {minReceived && <DetailRow label={`Min. received (${slippageLabel} slippage)`} value={`${minReceived} ${toToken.symbol}`} />}
+              {routeSteps.length > 0 && (
+                <div>
+                  <button
+                    onClick={() => setShowRoute(!showRoute)}
+                    aria-expanded={showRoute}
+                    className="w-full flex items-center justify-between gap-4 px-4 min-h-[40px] text-[14px] text-ice-muted hover:text-ice-text transition-colors"
+                  >
+                    <span>Route</span>
+                    <span className="flex items-center gap-1.5 text-ice-text">
+                      {routeSteps.length} {routeSteps.length === 1 ? 'hop' : 'hops'}
+                      {showRoute ? <ChevronUp className="w-4 h-4 text-ice-faint" /> : <ChevronDown className="w-4 h-4 text-ice-faint" />}
+                    </span>
+                  </button>
+                  {showRoute && (
+                    <div className="px-4 pb-3 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-[13px]">
+                      {routeSteps.map((s, index) => (
+                        <span key={index} className="flex items-center gap-1.5">
+                          {index === 0 && <span className="text-ice-text font-medium">{s.fromToken.symbol}</span>}
+                          <span className="text-ice-faint">→</span>
+                          <span className="px-1.5 py-0.5 rounded-md bg-ice-line/[0.08] text-ice-muted text-[12px]">{s.protocol}</span>
+                          <span className="text-ice-faint">→</span>
+                          <span className="text-ice-text font-medium">{s.toToken.symbol}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+          </div>
+        )}
+
+        {/* Notices */}
+        <div className="px-4 pt-3 space-y-2.5 empty:hidden">
+          {isHighImpact && !isWrongChain && !quoteLoading && (
+            <label className="flex items-start gap-3 px-4 py-3 rounded-xl bg-ice-down/[0.08] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={highImpactAccepted}
+                onChange={(e) => setHighImpactAccepted(e.target.checked)}
+                className="mt-0.5 accent-[#ff5c7a] shrink-0 w-4 h-4"
+              />
+              <span className="text-ice-down text-[14px] leading-snug">
+                This trade moves the price by about {priceImpact?.toFixed(1)}%, so you would receive well below market value.
+                Try a smaller amount, or tick to proceed anyway.
+              </span>
+            </label>
           )}
+          {isWrongChain && <Notice tone="warn">Your wallet is on another network. Switch to Avalanche to trade.</Notice>}
+          {!isWrongChain && (quoteError || execError) && <Notice tone="danger">{quoteError || execError}</Notice>}
         </div>
       </div>
+
+      {/* Action */}
+      <div className="p-4 shrink-0">
+        <button
+          onClick={handleSwapClick}
+          disabled={disabled}
+          className={cn(
+            'w-full min-h-[52px] rounded-xl font-semibold text-[16px] flex items-center justify-center gap-2 transition-opacity',
+            disabled ? 'bg-ice-line/[0.08] text-ice-faint cursor-not-allowed' : 'bg-ice-accent hover:opacity-90',
+          )}
+          style={disabled ? undefined : { color: '#06223a' }}
+        >
+          {working && <Loader2 className="w-5 h-5 animate-spin" />}
+          {getButtonText()}
+        </button>
+        {txHash && step === 'swapping' && (
+          <a
+            href={`https://snowtrace.io/tx/${txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 w-full min-h-[40px] inline-flex items-center justify-center gap-1.5 text-ice-muted hover:text-ice-text transition-colors text-[13px]"
+          >
+            View transaction <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+/** One side of the trade: label row, big amount, token pill, USD line. */
+function AmountCard({
+  label,
+  token,
+  onPickToken,
+  usd,
+  aside,
+  children,
+}: {
+  label: string;
+  token: SwapToken;
+  onPickToken: () => void;
+  usd: number | null;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl bg-ice-line/[0.05] border border-ice-line/[0.08] p-4">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <span className="text-ice-muted text-[13px]">{label}</span>
+        {aside}
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">{children}</div>
+        <button
+          type="button"
+          onClick={onPickToken}
+          className="shrink-0 flex items-center gap-2 pl-1.5 pr-2.5 h-10 rounded-full bg-ice-surface border border-ice-line/15 hover:border-ice-line/40 transition-colors"
+          aria-label={`Change token, currently ${token.symbol}`}
+        >
+          <TokenLogo token={token} className="w-7 h-7" />
+          <span className="text-ice-text font-semibold text-[15px]">{token.symbol}</span>
+          <ChevronDown className="w-4 h-4 text-ice-muted" />
+        </button>
+      </div>
+      <div className="h-5 mt-1.5 text-ice-faint text-[13px] tabular-nums">{usd !== null ? `≈ ${formatUsdApprox(usd)}` : ''}</div>
     </div>
   );
 }

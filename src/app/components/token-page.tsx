@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink, Lock, Globe, Twitter, Github, MessageCircle, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, ExternalLink, Lock, Globe, Twitter, Github, MessageCircle, ChevronDown } from 'lucide-react';
+import { DetailHeader } from '@/app/components/shell/page-header';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from '@/app/components/ui/utils';
 import { ErrorState } from '@/app/components/ui/data-states';
@@ -295,10 +296,10 @@ function VariantCard({ coin, tag, onClick }: { coin: CoinMarketData; tag: Varian
 }
 
 function Variants({ baseId }: { baseId: string }) {
-  const navigate = useNavigate();
   const fam = findFamily(baseId);
   const others = fam ? fam.members.filter((m) => m.id !== baseId) : [];
   const { variants, loading } = useTokenVariants(others.map((m) => m.id));
+  const navigate = useNavigate();
   if (!fam || others.length === 0) return null;
   const tagOf = (id: string): VariantTag => fam.members.find((m) => m.id === id)?.tag ?? 'Wrapped';
   const ordered = others.map((m) => variants.find((v) => v.id === m.id)).filter(Boolean) as CoinMarketData[];
@@ -319,15 +320,12 @@ function Variants({ baseId }: { baseId: string }) {
 
 export function TokenPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { token, loading, error, refetch } = useTokenDetail(id);
   const [swapOpen, setSwapOpen] = useState(false);
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-6xl">
-      <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-6 text-[14px]">
-        <ArrowLeft className="w-4 h-4" /> Back
-      </button>
+      <DetailHeader backLabel="Markets" backTo="/" />
 
       {error ? (
         <ErrorState message={error} onRetry={refetch} />

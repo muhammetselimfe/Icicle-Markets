@@ -517,7 +517,7 @@ export function OptionsTradePage() {
     return (
       <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-6xl">
         <button
-          onClick={() => navigate('/options')}
+          onClick={() => navigate('/predict')}
           className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-6"
           style={{ ...FONT, fontSize: '14px' }}
         >
@@ -536,7 +536,7 @@ export function OptionsTradePage() {
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-6xl">
       {/* Back button */}
       <button
-        onClick={() => navigate('/options')}
+        onClick={() => navigate('/predict')}
         className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors mb-6"
         style={{ ...FONT, fontSize: '14px' }}
       >

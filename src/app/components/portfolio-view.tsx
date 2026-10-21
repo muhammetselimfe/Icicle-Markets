@@ -1,44 +1,41 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAccount } from 'wagmi';
-import { usePrivy, useLogin } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import {
   Wallet,
   TrendingUp,
   TrendingDown,
   RefreshCw,
-  AlertCircle,
   Copy,
   Check,
   ExternalLink,
-  Calendar,
   ArrowRightLeft,
-  ArrowUpRight,
-  ArrowDownLeft,
-  ShieldCheck,
-  Layers,
-  FileCode,
+  ChevronRight,
 } from 'lucide-react';
+import { PageHeader } from '@/app/components/shell/page-header';
+import { SegmentedControl } from '@/app/components/shell/segmented-control';
+import { SignInGate } from '@/app/components/shell/sign-in-gate';
+import { EmptyState } from '@/app/components/shell/empty-state';
+import { WalletAvatar } from '@/app/components/shell/wallet-avatar';
+import { TransactionTypeIcon, TX_TYPE_LABELS } from '@/app/components/shell/transaction-type';
+import { ErrorState } from '@/app/components/ui/data-states';
+import { PositionsContent } from '@/app/components/positions-view';
 import { usePortfolio, type PortfolioHolding } from '@/app/hooks/usePortfolio';
-import { useTransactionHistory, type Transaction, type TransactionType } from '@/app/hooks/useTransactionHistory';
+import { getTokenByAddress } from '@/app/data/markets-tokens';
+import { useTransactionHistory, type Transaction } from '@/app/hooks/useTransactionHistory';
 import { SwapModal } from '@/app/components/swap-modal';
 import { cn } from '@/app/components/ui/utils';
 
-// ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
+// ── Formatting ───────────────────────────────────────────────────────────────
 
 function formatNumber(value: number, decimals: number = 2): string {
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  return value.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
 }
 
-function formatCompactNumber(value: number): string {
-  if (value === 0) return '0';
-  if (Math.abs(value) < 0.01) return value < 0 ? '-<$0.01' : '<$0.01';
-  return `$${formatNumber(Math.abs(value))}`;
+function formatUsd(value: number): string {
+  if (value !== 0 && Math.abs(value) < 0.01) return value < 0 ? '-<$0.01' : '<$0.01';
+  return `${value < 0 ? '-' : ''}$${formatNumber(Math.abs(value))}`;
 }
 
 function formatBalance(balance: string): string {
@@ -50,460 +47,328 @@ function formatBalance(balance: string): string {
   return formatNumber(num, 2);
 }
 
+function formatPrice(price: number): string {
+  return price < 0.01 ? `$${price.toFixed(6)}` : `$${formatNumber(price)}`;
+}
+
 function truncateAddress(address: string): string {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 function formatRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffMins < 1) return 'just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
+  const diffMs = Date.now() - date.getTime();
+  const mins = Math.floor(diffMs / 60_000);
+  const hours = Math.floor(diffMs / 3_600_000);
+  const days = Math.floor(diffMs / 86_400_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// ============================================================
-// AVATAR COMPONENT - Generates a unique pattern based on address
-// ============================================================
+// ── Small pieces ─────────────────────────────────────────────────────────────
 
-function WalletAvatar({ address, size = 48 }: { address: string; size?: number }) {
-  const colors = useMemo(() => {
-    const hash = address.toLowerCase();
-    const c1 = `#${hash.slice(2, 8)}`;
-    const c2 = `#${hash.slice(8, 14)}`;
-    const c3 = `#${hash.slice(14, 20)}`;
-    return [c1, c2, c3];
-  }, [address]);
-
-  const pattern = useMemo(() => {
-    const hash = address.toLowerCase();
-    const positions: { x: number; y: number; color: string; size: number }[] = [];
-    for (let i = 0; i < 9; i++) {
-      const charCode = hash.charCodeAt(i + 2);
-      positions.push({
-        x: (i % 3) * 33.33,
-        y: Math.floor(i / 3) * 33.33,
-        color: colors[charCode % 3],
-        size: 33.33,
-      });
-    }
-    return positions;
-  }, [address, colors]);
-
+function TokenLogo({ symbol, logoUrl, className = 'w-10 h-10' }: { symbol: string; logoUrl?: string; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (logoUrl && !failed) {
+    return <img src={logoUrl} alt="" className={cn('rounded-full shrink-0', className)} onError={() => setFailed(true)} />;
+  }
   return (
-    <div
-      className="relative overflow-hidden rounded-full ring-1 ring-ice-line/20"
-      style={{ width: size, height: size, background: '#141c3d' }}
-    >
-      <svg width={size} height={size} viewBox="0 0 100 100">
-        {pattern.map((p, i) => (
-          <rect key={i} x={p.x} y={p.y} width={p.size} height={p.size} fill={p.color} opacity={0.85} />
-        ))}
-      </svg>
-    </div>
+    <span className={cn('rounded-full bg-ice-line/[0.1] flex items-center justify-center text-ice-text text-[13px] font-semibold shrink-0', className)}>
+      {symbol.slice(0, 2)}
+    </span>
   );
 }
 
-// ============================================================
-// TOKEN LOGO COMPONENT
-// ============================================================
-
-function TokenLogo({ holding }: { holding: PortfolioHolding }) {
+function Change({ value, className }: { value: number; className?: string }) {
+  const up = value >= 0;
   return (
-    <div className="w-10 h-10 bg-white/10 flex items-center justify-center overflow-hidden rounded-full">
-      {holding.logoUrl ? (
-        <img
-          src={holding.logoUrl}
-          alt={holding.symbol}
-          className="w-8 h-8 object-contain rounded-full"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
-            e.currentTarget.nextElementSibling?.classList.remove('hidden');
-          }}
-        />
-      ) : null}
-      <span className={`text-lg text-ice-text ${holding.logoUrl ? 'hidden' : ''}`}>{holding.symbol.charAt(0)}</span>
-    </div>
+    <span className={cn('inline-flex items-center gap-1 tabular-nums', up ? 'text-ice-up' : 'text-ice-down', className)}>
+      {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+      {up ? '+' : ''}
+      {value.toFixed(2)}%
+    </span>
   );
 }
 
-// ============================================================
-// TRANSACTION ICON COMPONENT
-// ============================================================
-
-function TransactionIcon({ type }: { type: TransactionType }) {
-  const icons: Record<TransactionType, React.ReactNode> = {
-    swap: <ArrowRightLeft className="w-5 h-5" />,
-    send: <ArrowUpRight className="w-5 h-5" />,
-    receive: <ArrowDownLeft className="w-5 h-5" />,
-    approve: <ShieldCheck className="w-5 h-5" />,
-    stake: <Layers className="w-5 h-5" />,
-    unstake: <Layers className="w-5 h-5" />,
-    contract: <FileCode className="w-5 h-5" />,
-  };
-
-  return <span className="text-ice-muted">{icons[type] || <ArrowRightLeft className="w-5 h-5" />}</span>;
-}
-
-// ============================================================
-// STATE COMPONENTS
-// ============================================================
-
-function LoadingState() {
+function SkeletonRows({ rows = 4 }: { rows?: number }) {
   return (
-    <div className="container mx-auto px-4 md:px-6 py-12 md:py-16">
-      <div className="max-w-3xl mx-auto">
-        <div className="p-16 text-center">
-          <div className="w-16 h-16 mx-auto mb-6 bg-ice-surface border border-ice-line/15 rounded-full flex items-center justify-center">
-            <RefreshCw className="w-8 h-8 text-ice-accent animate-spin" />
+    <div className="rounded-2xl bg-ice-surface border border-ice-line/15 divide-y divide-ice-line/10">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-4 md:px-5 h-[68px]">
+          <div className="w-10 h-10 rounded-full bg-ice-line/[0.08] animate-pulse" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 w-24 rounded bg-ice-line/[0.08] animate-pulse" />
+            <div className="h-3 w-32 rounded bg-ice-line/[0.06] animate-pulse" />
           </div>
-          <h2 className="text-ice-text text-lg font-medium mb-2">
-            Loading portfolio...
-          </h2>
-          <p className="text-ice-muted text-[15px]">
-            Fetching your wallet data
-          </p>
+          <div className="h-3.5 w-20 rounded bg-ice-line/[0.08] animate-pulse" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Hero ─────────────────────────────────────────────────────────────────────
+
+export interface PortfolioHeroProps {
+  address: string;
+  totalValue: number;
+  change24h: number;
+  activeSince: Date | null;
+}
+
+/** Identity and headline number for the wallet. */
+export function PortfolioHero({ address, totalValue, change24h, activeSince }: PortfolioHeroProps) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  const changeValue = totalValue * (change24h / 100);
+
+  return (
+    <section className="mb-6 rounded-2xl bg-ice-surface border border-ice-line/15 p-5 md:p-6">
+      <div className="flex items-center gap-3 mb-5">
+        <WalletAvatar address={address} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <span className="text-ice-text font-medium font-mono text-[15px]">{truncateAddress(address)}</span>
+            <button type="button" onClick={copy} className="w-8 h-8 rounded-full flex items-center justify-center text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors" aria-label="Copy address">
+              {copied ? <Check className="w-4 h-4 text-ice-up" /> : <Copy className="w-4 h-4" />}
+            </button>
+            <a
+              href={`https://snowtrace.io/address/${address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-8 h-8 rounded-full flex items-center justify-center text-ice-muted hover:text-ice-text hover:bg-ice-line/[0.08] transition-colors"
+              aria-label="View on Snowtrace"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
+          <div className="flex items-center gap-2 text-ice-muted text-[13px]">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E84142]" />
+              Avalanche
+            </span>
+            {activeSince && (
+              <>
+                <span className="text-ice-faint">·</span>
+                <span>Since {formatDate(activeSince)}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
 
-function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
-  return (
-    <div className="p-10 text-center rounded-2xl bg-ice-surface border border-ice-line/15">
-      <AlertCircle className="w-10 h-10 text-ice-down mx-auto mb-4" />
-      <p className="text-ice-text mb-4 text-[15px]">
-        {error}
-      </p>
-      <button
-        onClick={onRetry}
-        className="inline-flex items-center gap-2 px-5 py-2 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 transition-all rounded-lg text-[14px]"
-        style={{ fontWeight: 500 }}
-      >
-        <RefreshCw className="w-4 h-4" />
-        Try again
-      </button>
-    </div>
-  );
-}
-
-function EmptyHoldingsState() {
-  return (
-    <div className="p-12 text-center rounded-2xl bg-ice-surface border border-ice-line/15">
-      <div className="w-14 h-14 mx-auto mb-4 bg-ice-accent/[0.08] border border-ice-line/15 rounded-full flex items-center justify-center">
-        <Wallet className="w-7 h-7 text-ice-accent" />
+      <div className="text-ice-muted text-[13px] mb-1">Total value</div>
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-ice-text font-bold tabular-nums tracking-[-0.02em] text-[34px] md:text-[40px] leading-none">{formatUsd(totalValue)}</span>
+        <span className="text-[14px] font-medium">
+          <Change value={change24h} />
+          <span className="text-ice-faint tabular-nums"> ({formatUsd(changeValue)}) today</span>
+        </span>
       </div>
-      <h3 className="text-ice-text font-medium mb-2 text-[16px]">
-        No tokens found
-      </h3>
-      <p className="text-ice-muted text-[14px]">
-        Your wallet doesn't hold any tracked tokens
-      </p>
-    </div>
+    </section>
   );
 }
 
-function EmptyTransactionsState() {
-  return (
-    <div className="p-12 text-center rounded-2xl bg-ice-surface border border-ice-line/15">
-      <div className="w-14 h-14 mx-auto mb-4 bg-ice-accent/[0.08] border border-ice-line/15 rounded-full flex items-center justify-center">
-        <ArrowRightLeft className="w-7 h-7 text-ice-accent" />
-      </div>
-      <h3 className="text-ice-text font-medium mb-2 text-[16px]">
-        No transactions
-      </h3>
-      <p className="text-ice-muted text-[14px]">
-        No recent transactions found
-      </p>
-    </div>
-  );
-}
+// ── Holdings ─────────────────────────────────────────────────────────────────
 
-// ============================================================
-// HOLDINGS TAB CONTENT
-// ============================================================
-
-function HoldingsTab({
+export function HoldingsList({
   holdings,
   loading,
   error,
   onRefetch,
-  onTradeClick,
+  onTrade,
 }: {
   holdings: PortfolioHolding[];
   loading: boolean;
   error: string | null;
   onRefetch: () => void;
-  onTradeClick: (holding: PortfolioHolding) => void;
+  onTrade: (holding: PortfolioHolding) => void;
 }) {
-  if (error) {
-    return <ErrorState error={error} onRetry={onRefetch} />;
-  }
-
-  if (!loading && holdings.length === 0) {
-    return <EmptyHoldingsState />;
+  if (error) return <ErrorState message={error} onRetry={onRefetch} />;
+  if (loading && holdings.length === 0) return <SkeletonRows />;
+  if (holdings.length === 0) {
+    return (
+      <EmptyState
+        icon={<Wallet className="w-6 h-6" />}
+        title="No tokens yet"
+        message="Tokens you hold on Avalanche show up here."
+        action={{ label: 'Browse markets', href: '/' }}
+      />
+    );
   }
 
   return (
-    <>
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-3">
-        {holdings.map((holding) => (
-          <div key={holding.address} className="bg-ice-surface border border-ice-line/15 p-4 rounded-xl">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <TokenLogo holding={holding} />
-                <div>
-                  <div className="text-ice-text font-semibold text-[15px]">
-                    {holding.symbol}
-                  </div>
-                  <div className="text-ice-muted text-[13px]">
-                    {holding.name}
-                  </div>
+    <div className="rounded-2xl bg-ice-surface border border-ice-line/15 overflow-hidden">
+      {/* Column captions, wide screens only */}
+      <div className="hidden md:grid grid-cols-[1fr_140px_110px_130px_88px] gap-4 px-5 h-9 items-center border-b border-ice-line/10 text-ice-faint text-[12px]">
+        <span>Asset</span>
+        <span className="text-right">Balance</span>
+        <span className="text-right">24h</span>
+        <span className="text-right">Value</span>
+        <span />
+      </div>
+      <ul className="divide-y divide-ice-line/10">
+        {holdings.map((h) => (
+          <li key={h.address} className="grid grid-cols-[1fr_auto] md:grid-cols-[1fr_140px_110px_130px_88px] items-center gap-3 md:gap-4 px-4 md:px-5 min-h-[68px] py-3">
+            <Link to={getTokenByAddress(h.address)?.coingeckoId ? `/token/${getTokenByAddress(h.address)!.coingeckoId}` : `/address/${h.address}`} className="flex items-center gap-3 min-w-0 group">
+              <TokenLogo symbol={h.symbol} logoUrl={h.logoUrl} />
+              <div className="min-w-0">
+                <div className="text-ice-text font-semibold text-[15px] leading-tight group-hover:text-ice-accent transition-colors">{h.symbol}</div>
+                <div className="text-ice-muted text-[13px] truncate">
+                  <span className="md:hidden tabular-nums">{formatBalance(h.balance)} {h.symbol}</span>
+                  <span className="hidden md:inline">{h.name}</span>
                 </div>
               </div>
-              <span
-                className={cn('font-mono font-medium', holding.change24h >= 0 ? 'text-ice-up' : 'text-ice-down', 'text-[14px]')}
-              >
-                {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
-              </span>
+            </Link>
+
+            {/* Phone: value and change stacked on the trailing edge */}
+            <div className="md:hidden text-right">
+              <div className="text-ice-text font-semibold tabular-nums text-[15px]">{formatUsd(h.valueUsd)}</div>
+              <Change value={h.change24h} className="text-[13px]" />
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-ice-text font-mono font-medium text-[16px]">
-                  ${formatNumber(holding.valueUsd)}
-                </div>
-                <div className="text-ice-muted font-mono text-[13px]">
-                  {formatBalance(holding.balance)} {holding.symbol}
-                </div>
-              </div>
+
+            <div className="hidden md:block text-right">
+              <div className="text-ice-text tabular-nums text-[14px]">{formatBalance(h.balance)}</div>
+              <div className="text-ice-faint tabular-nums text-[12px]">{formatPrice(h.priceUsd)}</div>
+            </div>
+            <div className="hidden md:block text-right text-[14px]">
+              <Change value={h.change24h} />
+            </div>
+            <div className="hidden md:block text-right text-ice-text font-semibold tabular-nums text-[15px]">{formatUsd(h.valueUsd)}</div>
+            <div className="hidden md:flex justify-end">
               <button
-                onClick={() => onTradeClick(holding)}
-                className="px-4 py-2.5 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 transition-all rounded-lg font-semibold min-h-[44px] text-[14px]"
+                type="button"
+                onClick={() => onTrade(h)}
+                className="h-9 px-4 rounded-full bg-ice-accent/[0.12] text-ice-accent hover:bg-ice-accent/20 transition-colors text-[13px] font-semibold"
               >
                 Trade
               </button>
             </div>
-          </div>
+          </li>
         ))}
-      </div>
-
-      {/* Desktop Table View */}
-      <div className="hidden md:block bg-ice-surface border border-ice-line/15 rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-ice-surface2/40 border-b border-ice-line/15">
-                <th className="text-left px-4 py-3 font-mono uppercase text-ice-faint text-[10px]" style={{ letterSpacing: '0.8px' }}>Asset</th>
-                <th className="text-right px-4 py-3 font-mono uppercase text-ice-faint text-[10px]" style={{ letterSpacing: '0.8px' }}>Balance</th>
-                <th className="text-right px-4 py-3 font-mono uppercase text-ice-faint text-[10px]" style={{ letterSpacing: '0.8px' }}>Value</th>
-                <th className="text-right px-4 py-3 font-mono uppercase text-ice-faint text-[10px]" style={{ letterSpacing: '0.8px' }}>24h Change</th>
-                <th className="text-center px-4 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {holdings.map((holding) => (
-                <tr key={holding.address} className="border-b border-ice-line/[0.06] last:border-0 hover:bg-ice-line/[0.03] transition-colors">
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      <TokenLogo holding={holding} />
-                      <div>
-                        <div className="text-ice-text font-semibold text-[14px]">
-                          {holding.symbol}
-                        </div>
-                        <div className="text-ice-muted text-[12px]">
-                          {holding.name}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <div className="text-ice-text font-mono text-[14px]">
-                      {formatBalance(holding.balance)}
-                    </div>
-                    <div className="text-ice-faint font-mono text-[12px]">
-                      ${holding.priceUsd < 0.01 ? holding.priceUsd.toFixed(6) : formatNumber(holding.priceUsd)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-right text-ice-text font-mono text-[14px]">
-                    ${formatNumber(holding.valueUsd)}
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span
-                      className={cn('font-mono', holding.change24h >= 0 ? 'text-ice-up' : 'text-ice-down', 'text-[14px]')}
-                    >
-                      {holding.change24h >= 0 ? '+' : ''}{holding.change24h.toFixed(2)}%
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 text-center">
-                    <button
-                      onClick={() => onTradeClick(holding)}
-                      className="px-4 py-2 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 transition-all rounded-lg font-semibold text-[13px]"
-                    >
-                      Trade
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
+      </ul>
+    </div>
   );
 }
 
-// ============================================================
-// TRANSACTIONS TAB CONTENT
-// ============================================================
+// ── Activity ─────────────────────────────────────────────────────────────────
 
-function TransactionsTab({
+export function ActivityList({
   transactions,
   loading,
   error,
   onRefetch,
+  hasMore,
+  onLoadMore,
 }: {
   transactions: Transaction[];
   loading: boolean;
   error: string | null;
   onRefetch: () => void;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }) {
-  if (error) {
-    return <ErrorState error={error} onRetry={onRefetch} />;
+  if (error) return <ErrorState message={error} onRetry={onRefetch} />;
+  if (loading && transactions.length === 0) return <SkeletonRows rows={6} />;
+  if (transactions.length === 0) {
+    return <EmptyState icon={<ArrowRightLeft className="w-6 h-6" />} title="No activity yet" message="Swaps, transfers and approvals from this wallet show up here." />;
   }
-
-  if (!loading && transactions.length === 0) {
-    return <EmptyTransactionsState />;
-  }
-
-  const getTypeLabel = (type: TransactionType): string => {
-    const labels: Record<TransactionType, string> = {
-      swap: 'Swap',
-      send: 'Send',
-      receive: 'Receive',
-      approve: 'Approve',
-      stake: 'Stake',
-      unstake: 'Unstake',
-      contract: 'Contract',
-    };
-    return labels[type] || 'Unknown';
-  };
 
   return (
-    <div className="bg-ice-surface border border-ice-line/15 rounded-2xl p-2">
-      {transactions.map((tx) => {
-        const primaryTransfer = tx.transfers[0];
-        const isOutgoing = primaryTransfer?.direction === 'out';
-
-        return (
-          <Link
-            key={tx.hash}
-            to={`/tx/${tx.hash}`}
-            className={cn(
-              'flex items-center gap-4 px-3 py-3.5 rounded-xl hover:bg-ice-line/[0.04] transition-colors',
-              tx.status === 'failed' && 'opacity-50',
-            )}
-          >
-            {/* Icon */}
-            <div className="w-10 h-10 rounded-full bg-ice-line/[0.06] flex items-center justify-center flex-shrink-0">
-              {tx.protocol?.logoUrl ? (
-                <img src={tx.protocol.logoUrl} alt={tx.protocol.name} className="w-6 h-6 rounded-full" />
-              ) : (
-                <TransactionIcon type={tx.type} />
-              )}
-            </div>
-
-            {/* Info - Left side */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-ice-text font-medium text-[15px]">
-                  {getTypeLabel(tx.type)}
+    <div className="rounded-2xl bg-ice-surface border border-ice-line/15 overflow-hidden">
+      <ul className="divide-y divide-ice-line/10">
+        {transactions.map((tx) => {
+          // Outgoing legs come first; a swap shows what left and what arrived.
+          const legs = tx.transfers.slice(0, 2);
+          return (
+            <li key={tx.hash}>
+              <Link
+                to={`/tx/${tx.hash}`}
+                className={cn('flex items-center gap-3 md:gap-4 px-4 md:px-5 min-h-[68px] py-3 hover:bg-ice-line/[0.05] transition-colors', (tx.status === 'failed' || tx.type === 'suspicious') && 'opacity-60')}
+              >
+                <span className={cn('w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden', tx.type === 'suspicious' ? 'bg-ice-down/10 text-ice-down' : 'bg-ice-line/[0.08] text-ice-muted')}>
+                  {tx.protocol?.logoUrl ? <img src={tx.protocol.logoUrl} alt="" className="w-6 h-6 rounded-full" /> : <TransactionTypeIcon type={tx.type} />}
                 </span>
-                {tx.protocol && (
-                  <span className="text-ice-muted text-[13px]">
-                    on {tx.protocol.name}
+                <span className="flex-1 min-w-0">
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-ice-text font-semibold text-[15px] shrink-0">{tx.title ?? TX_TYPE_LABELS[tx.type]}</span>
+                    <span className="text-ice-muted text-[13px] truncate">{tx.context}</span>
+                    {tx.status === 'failed' && <span className="px-1.5 h-5 inline-flex items-center rounded-md bg-ice-down/10 text-ice-down text-[11px] font-medium shrink-0">Failed</span>}
+                  </span>
+                  <span className="block text-ice-faint text-[13px] truncate">
+                    {tx.type === 'contract' && tx.method ? `${tx.method} · ` : ''}
+                    {tx.type === 'suspicious' ? 'Fake token event, do not copy addresses · ' : ''}
+                    {formatRelativeTime(tx.timestamp)}
+                  </span>
+                </span>
+                {legs.length > 0 && (
+                  <span className="text-right shrink-0 space-y-0.5">
+                    {legs.map((leg, i) => {
+                      const out = leg.direction === 'out';
+                      return (
+                        <span key={i} className="flex items-baseline justify-end gap-2">
+                          {leg.valueUsd > 0 && <span className="hidden sm:inline text-ice-faint tabular-nums text-[12px]">{formatUsd(leg.valueUsd)}</span>}
+                          <span className={cn('font-medium tabular-nums text-[14px]', out ? 'text-ice-text' : 'text-ice-up')}>
+                            {out ? '−' : '+'}
+                            {leg.amount} {leg.symbol}
+                          </span>
+                        </span>
+                      );
+                    })}
                   </span>
                 )}
-                {tx.status === 'failed' && (
-                  <span className="text-ice-down text-xs font-medium px-1.5 py-0.5 bg-ice-down/10 rounded">Failed</span>
-                )}
-              </div>
-              <div className="text-ice-faint font-mono text-[12px]">
-                {formatRelativeTime(tx.timestamp)}
-              </div>
-            </div>
-
-            {/* Amount - Right side */}
-            {primaryTransfer && (
-              <div className="text-right flex-shrink-0">
-                <div
-                  className={cn('font-mono font-medium', isOutgoing ? 'text-ice-down' : 'text-ice-up', 'text-[14px]')}
-                >
-                  {isOutgoing ? '-' : '+'}{primaryTransfer.amount} {primaryTransfer.symbol}
-                </div>
-                {primaryTransfer.valueUsd > 0 && (
-                  <div className="text-ice-faint font-mono text-[12px]">
-                    {isOutgoing ? '-' : ''}${formatNumber(primaryTransfer.valueUsd)}
-                  </div>
-                )}
-              </div>
-            )}
-          </Link>
-        );
-      })}
+                <ChevronRight className="w-4 h-4 text-ice-faint shrink-0" />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+      {hasMore && onLoadMore && (
+        <button
+          type="button"
+          onClick={onLoadMore}
+          disabled={loading}
+          className="w-full min-h-[48px] border-t border-ice-line/10 text-ice-accent text-[14px] font-medium hover:bg-ice-line/[0.05] transition-colors disabled:text-ice-faint"
+        >
+          {loading ? 'Loading…' : 'Show more'}
+        </button>
+      )}
     </div>
   );
 }
 
-// ============================================================
-// MAIN PORTFOLIO VIEW
-// ============================================================
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+type Segment = 'holdings' | 'positions' | 'activity';
+const SEGMENTS: Segment[] = ['holdings', 'positions', 'activity'];
 
 export function PortfolioView() {
-  const { authenticated, logout } = usePrivy();
-  const { login } = useLogin();
-
-  const handleLogin = async () => {
-    if (authenticated) {
-      await logout();
-    }
-    login();
-  };
+  const { authenticated } = usePrivy();
   const { address } = useAccount();
-  const { holdings, totalValue, totalChange24h, loading: holdingsLoading, error: holdingsError, lastUpdated, txCount, activeSince, refetch: refetchHoldings } = usePortfolio();
-  const { transactions, loading: txLoading, error: txError, refetch: refetchTx } = useTransactionHistory();
+  const navigate = useNavigate();
+  const params = useParams<{ segment?: string }>();
+  const segment: Segment = SEGMENTS.includes(params.segment as Segment) ? (params.segment as Segment) : 'holdings';
+  const setSegment = (next: Segment) => navigate(next === 'holdings' ? '/portfolio' : `/portfolio/${next}`, { replace: true });
 
-  const [activeTab, setActiveTab] = useState<'holdings' | 'transactions'>('holdings');
+  const { holdings, totalValue, totalChange24h, loading: holdingsLoading, error: holdingsError, lastUpdated, txCount, activeSince, refetch: refetchHoldings } = usePortfolio();
+  const { transactions, loading: txLoading, error: txError, refetch: refetchTx, hasMore, loadMore } = useTransactionHistory();
+
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedToken, setSelectedToken] = useState<{ symbol: string; address?: string } | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const handleTradeClick = (holding: PortfolioHolding) => {
     setSelectedToken({ symbol: holding.symbol, address: holding.address });
     setSwapModalOpen(true);
-  };
-
-  const handleCopyAddress = () => {
-    if (address) {
-      navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
   };
 
   const handleRefresh = () => {
@@ -511,160 +376,63 @@ export function PortfolioView() {
     refetchTx();
   };
 
-  // Not connected state
-  if (!authenticated) {
+  if (!authenticated || !address) {
     return (
-      <div className="container mx-auto px-4 md:px-6 py-12 flex items-center justify-center min-h-[65vh]">
-        <div className="w-full max-w-md rounded-2xl bg-ice-surface border border-ice-line/15 p-10 text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-ice-accent/[0.08] border border-ice-line/15 flex items-center justify-center">
-            <Wallet className="w-8 h-8 text-ice-accent" />
-          </div>
-          <h2 className="text-ice-text text-xl font-bold mb-3">
-            Sign in to get started
-          </h2>
-          <p className="text-ice-muted mb-8 leading-relaxed text-[15px]">
-            Track and manage your Avalanche assets across spot and options — all in one portfolio.
-          </p>
-          <button
-            onClick={() => handleLogin()}
-            className="px-6 py-3 rounded-xl font-semibold transition-transform hover:-translate-y-px text-[15px]"
-            style={{ background: 'linear-gradient(180deg, #8be4ff 0%, #4db8ff 100%)', color: '#06223a', boxShadow: '0 2px 16px rgba(139,228,255,0.3)' }}
-          >
-            Sign In
-          </button>
-          <div className="mt-8 pt-6 border-t border-ice-line/15">
-            <p className="text-ice-faint text-[13px]">
-              Sign in with email, Google, or your favorite wallet
-            </p>
-          </div>
-        </div>
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-4xl">
+        <PageHeader title="Portfolio" subtitle="Your holdings, prediction positions, and activity in one place" />
+        <SignInGate
+          title="Sign in to see your portfolio"
+          message="Spot holdings, prediction-market positions, and your transaction history, all in one place."
+        />
       </div>
     );
   }
 
-  // Loading state
-  if (holdingsLoading && holdings.length === 0) {
-    return <LoadingState />;
-  }
-
-  const totalChangeValue = totalValue * (totalChange24h / 100);
+  const refreshing = holdingsLoading || txLoading;
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8 max-w-4xl">
-      {/* Profile Header */}
-      <div className="mb-6 md:mb-8 rounded-2xl bg-ice-surface border border-ice-line/15 p-5 md:p-6">
-        {/* Identity Row */}
-        <div className="flex items-center gap-3 md:gap-4 mb-5">
-          {address && <WalletAvatar address={address} size={48} />}
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-ice-text font-mono font-medium text-[15px]">
-                {address ? truncateAddress(address) : ''}
-              </span>
-              <button
-                onClick={handleCopyAddress}
-                className="text-ice-muted hover:text-ice-text transition-colors p-1"
-                title="Copy address"
-              >
-                {copied ? <Check className="w-4 h-4 text-ice-up" /> : <Copy className="w-4 h-4" />}
-              </button>
-              <a
-                href={`https://snowtrace.io/address/${address}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-ice-muted hover:text-ice-text transition-colors p-1"
-                title="View on Snowtrace"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-ice-line/[0.06] border border-ice-line/15 text-ice-muted text-[12px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#E84142]"></span>
-                Avalanche Mainnet
-              </span>
-            </div>
-            {activeSince && (
-              <div className="flex items-center gap-1.5 text-ice-muted">
-                <Calendar className="w-3.5 h-3.5" />
-                <span className="text-[13px]">
-                  Active since {formatDate(activeSince)}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Value Row */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-          <div>
-            <div className="text-ice-faint font-mono uppercase mb-1.5 text-[10px]" style={{ letterSpacing: '1px' }}>
-              Portfolio Value
-            </div>
-            <div className="text-ice-text font-mono text-[32px]" style={{ fontWeight: 600, lineHeight: 1 }}>
-              ${formatNumber(totalValue)}
-            </div>
-          </div>
-          <div className={cn('flex items-center gap-1.5', totalChange24h >= 0 ? 'text-ice-up' : 'text-ice-down')}>
-            {totalChange24h >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            <span className="font-mono text-[14px]" style={{ fontWeight: 500 }}>
-              {totalChange24h >= 0 ? '+' : ''}{totalChange24h.toFixed(2)}% ({totalChange24h >= 0 ? '+' : '-'}{formatCompactNumber(Math.abs(totalChangeValue))})
+      <PageHeader
+        title="Portfolio"
+        trailing={
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors px-3 min-h-[44px] rounded-full hover:bg-ice-line/[0.06] disabled:text-ice-faint"
+            aria-label="Refresh"
+          >
+            <RefreshCw className={cn('w-4 h-4', refreshing && 'animate-spin')} />
+            <span className="hidden sm:inline text-[13px]">
+              {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Refresh'}
             </span>
-          </div>
-        </div>
-      </div>
+          </button>
+        }
+      />
 
-      {/* Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-          {([
-            ['holdings', `Holdings (${holdings.length})`],
-            ['transactions', `Transactions (${txCount !== null ? txCount.toLocaleString() : transactions.length})`],
-          ] as const).map(([id, label]) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={cn(
-                'px-4 py-2 rounded-[9px] transition-all font-medium whitespace-nowrap min-h-[44px] border',
-                activeTab === id
-                  ? 'bg-ice-accent/10 border-ice-line/40 text-ice-accent'
-                  : 'bg-ice-surface border-ice-line/15 text-ice-muted hover:text-ice-text', 'text-[14px]')}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+      <PortfolioHero address={address} totalValue={totalValue} change24h={totalChange24h} activeSince={activeSince} />
 
-        {/* Refresh Button */}
-        <button
-          onClick={handleRefresh}
-          className="flex items-center gap-2 text-ice-muted hover:text-ice-text transition-colors px-3 py-2 rounded-lg hover:bg-ice-line/[0.06] min-h-[44px] self-start sm:self-auto"
-          disabled={holdingsLoading || txLoading}
-        >
-          <RefreshCw className={cn('w-4 h-4', (holdingsLoading || txLoading) && 'animate-spin')} />
-          <span className="hidden sm:inline text-[13px]">
-            {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Refresh'}
-          </span>
-        </button>
-      </div>
+      <SegmentedControl
+        aria-label="Portfolio sections"
+        className="mb-4"
+        fullWidth
+        value={segment}
+        onChange={setSegment}
+        segments={[
+          { id: 'holdings', label: 'Holdings', badge: holdings.length || undefined },
+          { id: 'positions', label: 'Positions' },
+          { id: 'activity', label: 'Activity', badge: txCount !== null ? txCount.toLocaleString('en-US') : undefined },
+        ]}
+      />
 
-      {/* Tab Content */}
-      {activeTab === 'holdings' ? (
-        <HoldingsTab
-          holdings={holdings}
-          loading={holdingsLoading}
-          error={holdingsError}
-          onRefetch={refetchHoldings}
-          onTradeClick={handleTradeClick}
-        />
-      ) : (
-        <TransactionsTab
-          transactions={transactions}
-          loading={txLoading}
-          error={txError}
-          onRefetch={refetchTx}
-        />
+      {segment === 'holdings' && (
+        <HoldingsList holdings={holdings} loading={holdingsLoading} error={holdingsError} onRefetch={refetchHoldings} onTrade={handleTradeClick} />
+      )}
+      {segment === 'positions' && <PositionsContent />}
+      {segment === 'activity' && (
+        <ActivityList transactions={transactions} loading={txLoading} error={txError} onRefetch={refetchTx} hasMore={hasMore} onLoadMore={loadMore} />
       )}
 
-      {/* Swap Modal */}
       <SwapModal
         isOpen={swapModalOpen}
         onClose={() => {

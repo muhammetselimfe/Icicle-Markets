@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Header } from '@/app/components/header';
-import { Navigation } from '@/app/components/navigation';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
+import { NavBar } from '@/app/components/shell/nav-bar';
+import { TabBar, TAB_BAR_HEIGHT } from '@/app/components/shell/tab-bar';
 import { Footer } from '@/app/components/footer';
 import { MarketsView } from '@/app/components/markets-view';
 import { ErrorBoundary } from '@/app/components/error-boundary';
@@ -16,51 +16,18 @@ const PortfolioView = lazy(() => import('@/app/components/portfolio-view').then(
 const ExplorerView = lazy(() => import('@/app/components/explorer-view').then(m => ({ default: m.ExplorerView })));
 const OptionsView = lazy(() => import('@/app/components/options-view').then(m => ({ default: m.OptionsView })));
 const OptionsTradePage = lazy(() => import('@/app/components/options-trade-page').then(m => ({ default: m.OptionsTradePage })));
-const PositionsView = lazy(() => import('@/app/components/positions-view').then(m => ({ default: m.PositionsView })));
 const BlockPage = lazy(() => import('@/app/pages/block-page').then(m => ({ default: m.BlockPage })));
 const TransactionPage = lazy(() => import('@/app/pages/transaction-page').then(m => ({ default: m.TransactionPage })));
 const AddressPage = lazy(() => import('@/app/pages/address-page').then(m => ({ default: m.AddressPage })));
 
+/** Old /options/trade/:id links keep working. */
+function LegacyTradeRedirect() {
+  const { marketId } = useParams();
+  return <Navigate to={`/predict/${marketId}`} replace />;
+}
+
 function AppContent() {
   const location = useLocation();
-  const navigate = useNavigate();
-
-  // Determine active tab from URL
-  const getActiveTab = () => {
-    const path = location.pathname;
-    if (path === '/portfolio') return 'portfolio';
-    if (path === '/positions') return 'positions';
-    if (path === '/options' || path.startsWith('/options/')) return 'options';
-    if (path === '/explorer' || path.startsWith('/block') || path.startsWith('/tx') || path.startsWith('/address')) return 'explorer';
-    return 'markets';
-  };
-
-  const activeTab = getActiveTab();
-
-  const handleTabChange = (tab: string) => {
-    switch (tab) {
-      case 'markets':
-        navigate('/');
-        break;
-      case 'portfolio':
-        navigate('/portfolio');
-        break;
-      case 'options':
-        navigate('/options');
-        break;
-      case 'positions':
-        navigate('/positions');
-        break;
-      case 'explorer':
-        navigate('/explorer');
-        break;
-    }
-  };
-
-  // Check if we're on a detail page (block, tx, address)
-  const isDetailPage = location.pathname.startsWith('/block/') ||
-                       location.pathname.startsWith('/tx/') ||
-                       location.pathname.startsWith('/address/');
 
   return (
     <div className="min-h-screen bg-ice-bg text-ice-text relative overflow-hidden flex flex-col">
@@ -76,31 +43,40 @@ function AppContent() {
         />
       </div>
 
-      <Header />
-      {!isDetailPage && (
-        <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
-      )}
-      <main className="flex-1 pb-8 relative z-10">
+      <NavBar />
+      {/* Bottom padding keeps content clear of the phone tab bar and the home indicator */}
+      <main
+        className="flex-1 relative z-10 pb-8 md:pb-8"
+        style={{ paddingBottom: `calc(${TAB_BAR_HEIGHT}px + env(safe-area-inset-bottom) + 1rem)` }}
+      >
         {/* Keyed on pathname so a crash on one page resets when the user navigates away */}
         <ErrorBoundary key={location.pathname}>
           <Suspense fallback={<RouteFallback />}>
             <Routes>
               <Route path="/" element={<MarketsView />} />
               <Route path="/token/:id" element={<TokenPage />} />
+
+              <Route path="/predict" element={<OptionsView />} />
+              <Route path="/predict/:marketId" element={<OptionsTradePage />} />
+              <Route path="/options" element={<Navigate to="/predict" replace />} />
+              <Route path="/options/trade/:marketId" element={<LegacyTradeRedirect />} />
+
               <Route path="/portfolio" element={<PortfolioView />} />
-              <Route path="/options" element={<OptionsView />} />
-              <Route path="/options/trade/:marketId" element={<OptionsTradePage />} />
-              <Route path="/positions" element={<PositionsView />} />
+              <Route path="/portfolio/:segment" element={<PortfolioView />} />
+              <Route path="/positions" element={<Navigate to="/portfolio/positions" replace />} />
+
               <Route path="/explorer" element={<ExplorerView />} />
               <Route path="/block/:blockNumber" element={<BlockPage />} />
               <Route path="/tx/:hash" element={<TransactionPage />} />
               <Route path="/address/:address" element={<AddressPage />} />
+
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
       </main>
       <Footer />
+      <TabBar />
       {/* Theme comes from next-themes inside the wrapper, so light mode gets light toasts */}
       <Toaster />
     </div>

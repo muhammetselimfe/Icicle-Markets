@@ -19,6 +19,7 @@ import type {
   MetricName,
   TokenBalance,
   NativeBalance,
+  AddressLabel,
 } from '../types/api';
 
 const API_BASE = 'https://api.l1beat.io';
@@ -85,6 +86,18 @@ class ApiClient {
     );
   }
 
+  /** Transactions mined in one block, newest index first as the indexer returns them. */
+  async getBlockTransactions(
+    blockNumber: number,
+    chainId: number = DEFAULT_CHAIN_ID,
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<ApiResponse<Transaction[]>> {
+    return this.fetch<ApiResponse<Transaction[]>>(
+      `/api/v1/data/evm/${chainId}/txs?block_number=${blockNumber}&limit=${limit}&offset=${offset}`
+    );
+  }
+
   async getTransaction(
     hash: string,
     chainId: number = DEFAULT_CHAIN_ID
@@ -94,14 +107,26 @@ class ApiClient {
     );
   }
 
+  /** With `includeTransfers`, rows carry token transfers, internal calls and approvals like the single-transaction endpoint. */
   async getAddressTransactions(
     address: string,
     chainId: number = DEFAULT_CHAIN_ID,
     limit: number = 20,
-    offset: number = 0
+    offset: number = 0,
+    includeTransfers: boolean = false
   ): Promise<ApiResponse<Transaction[]>> {
     return this.fetch<ApiResponse<Transaction[]>>(
-      `/api/v1/data/evm/${chainId}/address/${address}/txs?limit=${limit}&offset=${offset}`
+      `/api/v1/data/evm/${chainId}/address/${address}/txs?limit=${limit}&offset=${offset}${includeTransfers ? '&include=transfers' : ''}`
+    );
+  }
+
+  /** Labels for up to 100 addresses; unknown addresses are left out of the map. */
+  async getAddressLabels(
+    addresses: string[],
+    chainId: number = DEFAULT_CHAIN_ID
+  ): Promise<ApiResponse<Record<string, AddressLabel>>> {
+    return this.fetch<ApiResponse<Record<string, AddressLabel>>>(
+      `/api/v1/data/evm/${chainId}/labels?addresses=${addresses.map((a) => a.toLowerCase()).join(',')}`
     );
   }
 

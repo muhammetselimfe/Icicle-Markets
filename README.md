@@ -41,12 +41,12 @@ npm run check  # both
 
 | Route | Description |
 |-------|-------------|
-| `/` | Token markets with prices, categories, and spot trading |
-| `/options` | Prediction markets listing |
-| `/options/trade/:id` | Trade a specific prediction market |
-| `/positions` | Your prediction market positions and P&L |
-| `/portfolio` | Wallet holdings and transaction history |
-| `/explorer` | Live blocks, TPS, and validators |
+| `/` | Markets: Avalanche token prices, categories, search, and spot swaps |
+| `/token/:id` | Token detail |
+| `/predict` | Prediction markets listing |
+| `/predict/:id` | Trade a prediction market |
+| `/portfolio` | Holdings, prediction positions, and activity (segments) |
+| `/explorer` | Chain search, live blocks, TPS, and validators |
 
 ## Prediction Markets
 

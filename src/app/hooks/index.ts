@@ -11,6 +11,7 @@ export { useSwapExecution } from './useSwapExecution';
 export { usePortfolio, type PortfolioHolding, type PortfolioData } from './usePortfolio';
 export { useTransactionHistory, useActiveSince, type Transaction, type TransactionType, type TransactionStatus, type TokenTransfer, type TransactionHistoryData } from './useTransactionHistory';
 export { useChainSwitch } from './useChainSwitch';
+export { useAddressLabel } from './useAddressLabel';
 export { useOptionsMarkets } from './useOptionsMarkets';
 export { useOptionsPositions } from './useOptionsPositions';
 export { useOptionsCostPreview } from './useOptionsCostPreview';

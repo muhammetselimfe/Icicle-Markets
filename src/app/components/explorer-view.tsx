@@ -1,290 +1,134 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { Activity, Box, Zap, Users, Server, AlertCircle } from 'lucide-react';
-import { cn } from '@/app/components/ui/utils';
+import { useMemo, useEffect, useRef, useState, type ReactNode } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { useBlocksWebSocket, useChainStats, useTimeSeries, useValidators, useAvaxPrice } from '@/app/hooks';
-import { formatLargeNumber, formatPercentage } from '@/app/utils/formatters';
+import { PageHeader } from '@/app/components/shell/page-header';
+import { cn } from '@/app/components/ui/utils';
+import { useBlocksWebSocket, useChainStats, useTimeSeries, useValidators } from '@/app/hooks';
+import { formatLargeNumber } from '@/app/utils/formatters';
 import { getChartTimeLabel } from '@/app/utils/time';
 import { BlockStream } from './block-stream';
 import { TransactionStream } from './transaction-stream';
+import { LiveListStyles } from './live-list';
 
-// Loading skeleton component
-function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`animate-pulse bg-ice-line/[0.08] rounded ${className}`} />;
+/** Briefly highlights when its value changes, so live numbers read as live. */
+function useFlash<T>(value: T): boolean {
+  const [flash, setFlash] = useState(false);
+  const prev = useRef(value);
+  useEffect(() => {
+    if (value === prev.current) return;
+    prev.current = value;
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 500);
+    return () => clearTimeout(t);
+  }, [value]);
+  return flash;
 }
 
-// Error display component
-function ErrorDisplay({ message }: { message: string }) {
+function Stat({ label, value, loading, tone }: { label: string; value: ReactNode; loading?: boolean; tone?: 'up' }) {
+  const flash = useFlash(value);
   return (
-    <div className="flex items-center gap-2 text-red-500 text-[14px]">
-      <AlertCircle className="w-4 h-4" />
-      {message}
+    <div className="rounded-2xl bg-ice-surface border border-ice-line/15 p-4 flex flex-col gap-1.5">
+      <span className="text-ice-muted text-[13px]">{label}</span>
+      {loading ? (
+        <span className="h-6 w-20 rounded bg-ice-line/[0.08] animate-pulse" />
+      ) : (
+        <span
+          className={cn(
+            'font-semibold tabular-nums leading-none tracking-[-0.01em] text-[22px] transition-opacity',
+            tone === 'up' ? 'text-ice-up' : 'text-ice-text',
+            flash && 'opacity-60',
+          )}
+        >
+          {value}
+        </span>
+      )}
     </div>
   );
 }
 
-// Animated block time - shows time with digit animation
-function AnimatedBlockTime({ value }: { value: number }) {
-  const [displayValue, setDisplayValue] = useState(value);
-  const [isChanged, setIsChanged] = useState(false);
-  const prevValueRef = useRef(value);
-
-  useEffect(() => {
-    if (value !== prevValueRef.current) {
-      setIsChanged(true);
-      setDisplayValue(value);
-      prevValueRef.current = value;
-
-      const timer = setTimeout(() => setIsChanged(false), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [value]);
-
-  // Format to show milliseconds for sub-second times
-  const formatted = displayValue < 1
-    ? `${Math.round(displayValue * 1000)}ms`
-    : `${displayValue.toFixed(2)}s`;
-
-  return (
-    <span
-      className={cn("text-green-500 font-medium", isChanged && "animate-pulse", 'text-[15px]')}
-    >
-      {formatted}
-    </span>
-  );
-}
-
-// Animated block counter - shows full number with digit-by-digit animation
-function AnimatedBlockNumber({ value }: { value: number }) {
-  const [displayValue, setDisplayValue] = useState(value);
-  const [isChanged, setIsChanged] = useState(false);
-  const prevValueRef = useRef(value);
-
-  useEffect(() => {
-    if (value !== prevValueRef.current) {
-      setIsChanged(true);
-      setDisplayValue(value);
-      prevValueRef.current = value;
-
-      const timer = setTimeout(() => setIsChanged(false), 500);
-      return () => clearTimeout(timer);
-    }
-  }, [value]);
-
-  return (
-    <span
-      className={cn("text-ice-text font-medium", isChanged && "animate-pulse", 'text-[15px]')}
-    >
-      {displayValue.toLocaleString()}
-    </span>
-  );
+function formatBlockTime(seconds: number): string {
+  return seconds < 1 ? `${Math.round(seconds * 1000)} ms` : `${seconds.toFixed(2)} s`;
 }
 
 export function ExplorerView() {
-  // Fetch data from API
   const { blocks, connected: blocksConnected, error: blocksError, lastError: blocksLastError, clearError: clearBlocksError } = useBlocksWebSocket();
   const blocksLoading = !blocksConnected && blocks.length === 0;
 
-  // Calculate real-time block time from live blocks data
+  // Live block time from the last few blocks; falls back to the indexer average.
   const liveBlockTime = useMemo(() => {
     if (blocks.length < 2) return null;
-
-    let totalTime = 0;
+    let total = 0;
     let count = 0;
-
     for (let i = 0; i < Math.min(blocks.length - 1, 5); i++) {
-      const newer = new Date(blocks[i].block_time).getTime();
-      const older = new Date(blocks[i + 1].block_time).getTime();
-      const diff = (newer - older) / 1000;
+      const diff = (new Date(blocks[i].block_time).getTime() - new Date(blocks[i + 1].block_time).getTime()) / 1000;
       if (diff > 0 && diff < 10) {
-        totalTime += diff;
+        total += diff;
         count++;
       }
     }
-
-    return count > 0 ? totalTime / count : null;
+    return count > 0 ? total / count : null;
   }, [blocks]);
 
   const { stats, loading: statsLoading, error: statsError } = useChainStats();
   const { data: tpsData, loading: tpsLoading } = useTimeSeries('avg_tps', 'hour', 24, true);
   const { activeCount: validatorCount, loading: validatorsLoading } = useValidators(true);
-  const { price: avaxPrice, change24h: avaxChange, loading: priceLoading } = useAvaxPrice();
 
-  // Transform TPS data for chart
-  const chartTpsData = tpsData.map((point) => ({
-    time: getChartTimeLabel(point.period, 'hour'),
-    tps: Math.round(point.value),
-  })).reverse();
+  const chartTpsData = tpsData
+    .map((point) => ({ time: getChartTimeLabel(point.period, 'hour'), tps: Math.round(point.value) }))
+    .reverse();
+  const currentTps = chartTpsData.length > 0 ? chartTpsData[chartTpsData.length - 1]?.tps : null;
+  const blockTime = liveBlockTime ?? stats?.avg_block_time_seconds ?? null;
 
   return (
     <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
+      <LiveListStyles />
+      <PageHeader title="Explorer" subtitle="Live blocks, transactions, and network health on Avalanche" />
+
       {statsError && (
-        <div className="mb-4">
-          <ErrorDisplay message={`Chain stats unavailable: ${statsError}`} />
+        <div className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-ice-down/[0.08] text-ice-down text-[14px]">
+          <AlertTriangle className="w-[18px] h-[18px] shrink-0" />
+          Chain stats are unavailable right now: {statsError}
         </div>
       )}
-      {/* Stats + TPS Chart Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {/* TPS */}
-          <div className="bg-ice-surface p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
-                <Activity className="w-5 h-5 text-ice-muted" />
-              </div>
-              <div>
-                <div className="text-ice-muted text-[13px]">TPS</div>
-                {tpsLoading ? (
-                  <Skeleton className="h-5 w-12" />
-                ) : (
-                  <div className="text-ice-text font-medium text-[15px]">
-                    {chartTpsData.length > 0 ? chartTpsData[chartTpsData.length - 1]?.tps || '-' : '-'}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
 
-          {/* Block Time */}
-          <div className="bg-ice-surface p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
-                <Zap className="w-5 h-5 text-ice-muted" />
-              </div>
-              <div>
-                <div className="text-ice-muted text-[13px]">Block Time</div>
-                {blocksLoading && blocks.length === 0 ? (
-                  <Skeleton className="h-5 w-16" />
-                ) : (
-                  <AnimatedBlockTime value={liveBlockTime ?? stats?.avg_block_time_seconds ?? 0} />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Latest Block */}
-          <div className="bg-ice-surface p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
-                <Box className="w-5 h-5 text-ice-muted" />
-              </div>
-              <div>
-                <div className="text-ice-muted text-[13px]">Latest Block</div>
-                {blocksLoading && blocks.length === 0 ? (
-                  <Skeleton className="h-5 w-24" />
-                ) : (
-                  <AnimatedBlockNumber value={blocks[0]?.block_number ?? 0} />
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Validators */}
-          <div className="bg-ice-surface p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
-                <Users className="w-5 h-5 text-ice-muted" />
-              </div>
-              <div>
-                <div className="text-ice-muted text-[13px]">Validators</div>
-                {validatorsLoading ? (
-                  <Skeleton className="h-5 w-14" />
-                ) : (
-                  <div className="text-ice-text font-medium text-[15px]">
-                    {validatorCount.toLocaleString()}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Total Transactions */}
-          <div className="bg-ice-surface p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-ice-line/[0.08] flex items-center justify-center rounded-lg">
-                <Server className="w-5 h-5 text-ice-muted" />
-              </div>
-              <div>
-                <div className="text-ice-muted text-[13px]">Total TXs</div>
-                {statsLoading ? (
-                  <Skeleton className="h-5 w-16" />
-                ) : (
-                  <div className="text-ice-text font-medium text-[15px]">
-                    {stats ? formatLargeNumber(stats.total_txs) : '-'}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* AVAX Price */}
-          <div className="bg-ice-surface p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="text-ice-muted text-[13px]">AVAX</div>
-                {priceLoading ? (
-                  <Skeleton className="h-5 w-16" />
-                ) : (
-                  <>
-                    <div className="text-ice-text font-medium text-[15px]">
-                      ${avaxPrice.toFixed(2)}
-                    </div>
-                    <div
-                      className={cn("font-medium", avaxChange >= 0 ? "text-green-500" : "text-red-500", 'text-[13px]')}
-                    >
-                      {formatPercentage(avaxChange)}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.15fr] gap-4 mb-6">
+        <div className="grid grid-cols-2 gap-3 lg:gap-4">
+          <Stat label="Latest block" loading={blocksLoading} value={blocks[0] ? `#${blocks[0].block_number.toLocaleString('en-US')}` : '—'} />
+          <Stat label="Block time" loading={blocksLoading && blockTime === null} value={blockTime !== null ? formatBlockTime(blockTime) : '—'} tone="up" />
+          <Stat label="Transactions per second" loading={tpsLoading} value={currentTps ?? '—'} />
+          <Stat label="Active validators" loading={validatorsLoading} value={validatorCount.toLocaleString('en-US')} />
         </div>
 
-        {/* TPS Chart */}
-        <div className="bg-ice-surface p-4 rounded-xl flex flex-col min-h-[200px] md:min-h-0">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-ice-muted text-[13px]">
-              TPS (24H)
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-green-500 text-[11px]">
-                Live
-              </span>
-            </div>
+        <section className="rounded-2xl bg-ice-surface border border-ice-line/15 p-4 md:p-5 flex flex-col min-h-[220px]">
+          <div className="flex items-baseline justify-between gap-3 mb-3">
+            <h3 className="text-ice-text font-semibold text-[15px]">Throughput, 24h</h3>
+            {!statsLoading && stats && (
+              <span className="text-ice-faint text-[12px] tabular-nums whitespace-nowrap">{formatLargeNumber(stats.total_txs)} txs all time</span>
+            )}
           </div>
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-[150px]">
             {tpsLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <Skeleton className="h-full w-full" />
-              </div>
+              <div className="h-full w-full rounded-xl bg-ice-line/[0.06] animate-pulse" />
             ) : (
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart data={chartTpsData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="time" stroke="#94a3b8" tick={{ fontSize: 9, fontFamily: "Inter, sans-serif" }} interval="preserveStartEnd" />
-                  <YAxis stroke="#94a3b8" tick={{ fontSize: 9, fontFamily: "Inter, sans-serif" }} width={25} />
+                <BarChart data={chartTpsData} margin={{ top: 4, right: 0, left: -8, bottom: 0 }}>
+                  <CartesianGrid vertical={false} stroke="var(--chart-grid)" strokeDasharray="3 3" />
+                  <XAxis dataKey="time" stroke="var(--chart-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+                  <YAxis stroke="var(--chart-axis)" tickLine={false} axisLine={false} tick={{ fontSize: 11 }} width={32} allowDecimals={false} />
                   <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#0f1535',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '8px',
-                      fontFamily: "Inter, sans-serif",
-                      fontSize: '12px'
-                    }}
-                    labelStyle={{ color: '#fff' }}
+                    cursor={{ fill: 'var(--chart-grid)', opacity: 0.4 }}
+                    contentStyle={{ backgroundColor: 'var(--chart-tooltip-bg)', border: '1px solid var(--chart-grid)', borderRadius: 12, fontSize: 12, color: 'var(--ice-text)' }}
+                    labelStyle={{ color: 'var(--ice-muted)' }}
+                    formatter={(v: number) => [`${v} tps`, '']}
                   />
-                  <Bar dataKey="tps" fill="#94a3b8" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="tps" fill="var(--ice-accent)" fillOpacity={0.7} radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* Side-by-side Streams */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <BlockStream blocks={blocks} loading={blocksLoading} error={blocksError} lastError={blocksLastError} onClearError={clearBlocksError} connected={blocksConnected} />
         <TransactionStream />
