@@ -67,6 +67,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // Vendor code changes far less often than app code; splitting it by package lets the
+    // browser keep Privy / wagmi / React cached across app deploys.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (id.includes('/@privy-io/')) return 'vendor-privy';
+          if (id.includes('/recharts/') || id.includes('/d3-') || id.includes('/victory-')) return 'vendor-charts';
+          if (id.includes('/wagmi/') || id.includes('/@wagmi/') || id.includes('/viem/') || id.includes('/ox/') || id.includes('/abitype/')) return 'vendor-web3';
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router') || id.includes('/scheduler/') || id.includes('/@tanstack/')) return 'vendor-react';
+          return undefined;
+        },
+      },
+    },
+  },
   optimizeDeps: {
     include: [
       'react',

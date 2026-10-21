@@ -1,16 +1,25 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/app/components/header';
 import { Navigation } from '@/app/components/navigation';
 import { Footer } from '@/app/components/footer';
 import { MarketsView } from '@/app/components/markets-view';
-import { PortfolioView } from '@/app/components/portfolio-view';
-import { ExplorerView } from '@/app/components/explorer-view';
-import { OptionsView } from '@/app/components/options-view';
-import { PositionsView } from '@/app/components/positions-view';
-import { OptionsTradePage } from '@/app/components/options-trade-page';
-import { TokenPage } from '@/app/components/token-page';
-import { BlockPage, TransactionPage, AddressPage } from '@/app/pages';
+import { ErrorBoundary } from '@/app/components/error-boundary';
+import { NotFound } from '@/app/components/not-found';
+import { RouteFallback } from '@/app/components/route-fallback';
 import { Toaster } from '@/app/components/ui/sonner';
+
+// Every route except the landing page is code-split so the first paint only ships the
+// markets table. Each `lazy` import becomes its own chunk.
+const TokenPage = lazy(() => import('@/app/components/token-page').then(m => ({ default: m.TokenPage })));
+const PortfolioView = lazy(() => import('@/app/components/portfolio-view').then(m => ({ default: m.PortfolioView })));
+const ExplorerView = lazy(() => import('@/app/components/explorer-view').then(m => ({ default: m.ExplorerView })));
+const OptionsView = lazy(() => import('@/app/components/options-view').then(m => ({ default: m.OptionsView })));
+const OptionsTradePage = lazy(() => import('@/app/components/options-trade-page').then(m => ({ default: m.OptionsTradePage })));
+const PositionsView = lazy(() => import('@/app/components/positions-view').then(m => ({ default: m.PositionsView })));
+const BlockPage = lazy(() => import('@/app/pages/block-page').then(m => ({ default: m.BlockPage })));
+const TransactionPage = lazy(() => import('@/app/pages/transaction-page').then(m => ({ default: m.TransactionPage })));
+const AddressPage = lazy(() => import('@/app/pages/address-page').then(m => ({ default: m.AddressPage })));
 
 function AppContent() {
   const location = useLocation();
@@ -72,21 +81,28 @@ function AppContent() {
         <Navigation activeTab={activeTab} onTabChange={handleTabChange} />
       )}
       <main className="flex-1 pb-8 relative z-10">
-        <Routes>
-          <Route path="/" element={<MarketsView />} />
-          <Route path="/token/:id" element={<TokenPage />} />
-          <Route path="/portfolio" element={<PortfolioView />} />
-          <Route path="/options" element={<OptionsView />} />
-          <Route path="/options/trade/:marketId" element={<OptionsTradePage />} />
-          <Route path="/positions" element={<PositionsView />} />
-          <Route path="/explorer" element={<ExplorerView />} />
-          <Route path="/block/:blockNumber" element={<BlockPage />} />
-          <Route path="/tx/:hash" element={<TransactionPage />} />
-          <Route path="/address/:address" element={<AddressPage />} />
-        </Routes>
+        {/* Keyed on pathname so a crash on one page resets when the user navigates away */}
+        <ErrorBoundary key={location.pathname}>
+          <Suspense fallback={<RouteFallback />}>
+            <Routes>
+              <Route path="/" element={<MarketsView />} />
+              <Route path="/token/:id" element={<TokenPage />} />
+              <Route path="/portfolio" element={<PortfolioView />} />
+              <Route path="/options" element={<OptionsView />} />
+              <Route path="/options/trade/:marketId" element={<OptionsTradePage />} />
+              <Route path="/positions" element={<PositionsView />} />
+              <Route path="/explorer" element={<ExplorerView />} />
+              <Route path="/block/:blockNumber" element={<BlockPage />} />
+              <Route path="/tx/:hash" element={<TransactionPage />} />
+              <Route path="/address/:address" element={<AddressPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <Footer />
-      <Toaster theme="dark" />
+      {/* Theme comes from next-themes inside the wrapper, so light mode gets light toasts */}
+      <Toaster />
     </div>
   );
 }
