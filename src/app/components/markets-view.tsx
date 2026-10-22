@@ -80,23 +80,31 @@ function StatCard({
   delta,
   deltaUp,
   count,
+  loading,
+  className,
 }: {
   label: string;
   value: string;
   delta?: string;
   deltaUp?: boolean;
   count?: boolean;
+  loading?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="flex-1 rounded-2xl bg-ice-surface border border-ice-line/15 p-4 lg:p-[18px] flex flex-col gap-2.5">
+    <div className={cn('flex-1 rounded-2xl bg-ice-surface border border-ice-line/15 p-4 lg:p-[18px] flex flex-col gap-2.5', className)}>
       <span className="text-ice-muted text-[13px]">
         {label}
       </span>
       <div className="flex items-end justify-between gap-2">
-        <span className="font-semibold tabular-nums text-ice-text leading-none tracking-[-0.01em] text-[22px]">
-          {value}
-        </span>
-        {delta && (
+        {loading ? (
+          <span className="h-[22px] w-24 rounded-md bg-ice-line/[0.08] animate-pulse" />
+        ) : (
+          <span className="font-semibold tabular-nums text-ice-text leading-none tracking-[-0.01em] text-[22px]">
+            {value}
+          </span>
+        )}
+        {delta && !loading && (
           <div
             className={cn(
               'flex items-center gap-1 px-2 py-1 rounded-md',
@@ -123,6 +131,8 @@ function StatCard({
 function StatsStrip({ tokens }: { tokens: TokenData[] }) {
   const { totalMarketCap, total24hVolume, avgChange24h, tokenCount } = useMarketStats(tokens);
   const avax = useAvaxPrice();
+  // Nothing fetched yet: zeros would read as real numbers.
+  const loading = tokens.length === 0;
 
   const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 
@@ -133,15 +143,17 @@ function StatsStrip({ tokens }: { tokens: TokenData[] }) {
         value={formatUSD(totalMarketCap)}
         delta={fmtPct(avgChange24h)}
         deltaUp={avgChange24h >= 0}
+        loading={loading}
       />
-      <StatCard label="Ecosystem volume 24h" value={formatUSD(total24hVolume)} />
+      <StatCard label="Ecosystem volume 24h" value={formatUSD(total24hVolume)} loading={loading} className="hidden lg:flex" />
       <StatCard
         label="AVAX price"
         value={avax.price > 0 ? `$${avax.price.toFixed(2)}` : '—'}
         delta={avax.price > 0 ? fmtPct(avax.change24h) : undefined}
         deltaUp={avax.change24h >= 0}
+        loading={loading && avax.price <= 0}
       />
-      <StatCard label="Tracked assets" value={String(tokenCount)} delta="live" count />
+      <StatCard label="Tracked assets" value={String(tokenCount)} delta="live" count loading={loading} className="hidden lg:flex" />
     </div>
   );
 }
@@ -266,92 +278,65 @@ export function MarketsView() {
         ) : showEmpty ? (
           <EmptyState title={emptyTitle} message={emptyMessage} />
         ) : tokensLoading ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="bg-ice-surface border border-ice-line/15 p-4 rounded-xl">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="w-10 h-10 rounded-full" />
-                  <div>
-                    <Skeleton className="h-4 w-20 mb-1" />
-                    <Skeleton className="h-3 w-12" />
-                  </div>
-                </div>
-                <Skeleton className="w-4 h-4" />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Skeleton className="h-5 w-16 mb-1" />
+          <div className="rounded-2xl bg-ice-surface border border-ice-line/15 divide-y divide-ice-line/10">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 h-[64px]">
+                <Skeleton className="w-10 h-10 rounded-full" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-24 mb-1.5" />
                   <Skeleton className="h-3 w-12" />
                 </div>
-                <Skeleton className="h-10 w-16 rounded-lg" />
+                <div className="text-right">
+                  <Skeleton className="h-4 w-16 mb-1.5 ml-auto" />
+                  <Skeleton className="h-3 w-10 ml-auto" />
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          filteredTokens.map((token) => {
-            const isPositive = token.change24h >= 0;
-            return (
-              <div key={token.id} onClick={() => navigate(`/token/${token.id}`)} className="bg-ice-surface border border-ice-line/15 p-4 rounded-xl cursor-pointer">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-white/10 rounded-full overflow-hidden flex items-center justify-center">
-                      {token.image ? (
-                        <img src={token.image} alt={token.symbol} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-ice-muted text-xs">?</span>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-ice-text font-medium text-[15px]">
-                        {token.name}
-                      </div>
-                      <div className="text-ice-muted text-[13px]">
-                        {token.symbol}
-                      </div>
-                    </div>
-                  </div>
+          // One grouped list, one row per token: name on the leading edge, price and change
+          // on the trailing edge. The row opens the token page, where Trade lives.
+          <ul className="rounded-2xl bg-ice-surface border border-ice-line/15 divide-y divide-ice-line/10">
+            {filteredTokens.map((token) => {
+              const isPositive = token.change24h >= 0;
+              const starred = favorites.includes(token.id);
+              return (
+                <li key={token.id} className="flex items-center">
                   <button
-                    onClick={(e) => { e.stopPropagation(); toggleFavorite(token.id); }}
-                    className="p-2 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    type="button"
+                    onClick={() => navigate(`/token/${token.id}`)}
+                    className="flex-1 min-w-0 flex items-center gap-3 pl-4 pr-1 min-h-[64px] py-2.5 text-left active:bg-ice-line/[0.06] transition-colors"
                   >
-                    <Star
-                      className={cn(
-                        'w-5 h-5',
-                        favorites.includes(token.id) ? 'fill-yellow-400 text-yellow-400' : 'text-ice-faint',
-                      )}
-                    />
-                  </button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-ice-text font-mono font-medium text-[16px]">
-                      ${formatTokenPrice(token.price)}
-                    </div>
-                    <div
-                      className={cn('font-mono font-medium', isPositive ? 'text-ice-up' : 'text-ice-down', 'text-[13px]')}
-                    >
-                      {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
-                    </div>
-                  </div>
-                  {token.restricted ? (
-                    <div className="flex items-center gap-1.5 px-3 py-2.5 bg-yellow-500/10 rounded-lg min-h-[44px]">
-                      <Lock className="w-3.5 h-3.5 text-yellow-500" />
-                      <span className="text-yellow-500 font-medium text-[12px]">
-                        Institutional
+                    <span className="w-10 h-10 rounded-full bg-ice-line/[0.08] overflow-hidden flex items-center justify-center shrink-0">
+                      {token.image ? <img src={token.image} alt="" className="w-full h-full object-cover" /> : <span className="text-ice-muted text-xs">?</span>}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-ice-text font-semibold text-[15px] truncate">{token.name}</span>
+                        {token.restricted && <Lock className="w-3.5 h-3.5 text-yellow-500 shrink-0" />}
                       </span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleBuyClick(token); }}
-                      className="px-4 py-2.5 bg-ice-accent/10 border border-ice-line/30 text-ice-accent hover:bg-ice-accent/20 rounded-lg font-semibold transition-colors min-h-[44px] text-[14px]"
-                    >
-                      Trade
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })
+                      <span className="block text-ice-muted text-[13px]">{token.symbol}</span>
+                    </span>
+                    <span className="text-right shrink-0">
+                      <span className="block text-ice-text font-semibold tabular-nums text-[15px]">${formatTokenPrice(token.price)}</span>
+                      <span className={cn('block tabular-nums text-[13px]', isPositive ? 'text-ice-up' : 'text-ice-down')}>
+                        {isPositive ? '+' : ''}{token.change24h.toFixed(2)}%
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFavorite(token.id)}
+                    className="w-11 h-11 mr-1 flex items-center justify-center shrink-0"
+                    aria-label={starred ? 'Remove from favorites' : 'Add to favorites'}
+                    aria-pressed={starred}
+                  >
+                    <Star className={cn('w-5 h-5', starred ? 'fill-yellow-400 text-yellow-400' : 'text-ice-faint')} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </div>
 

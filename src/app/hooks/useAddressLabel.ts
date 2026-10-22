@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { addressLabels, resolveLabel, type ResolvedLabel } from '@/app/services/address-labels';
-import { getAddressInfo } from '@/app/data/known-addresses';
 import { queryKeys } from './queryKeys';
 import type { AddressLabel } from '@/app/types/api';
 
@@ -12,7 +11,6 @@ import type { AddressLabel } from '@/app/types/api';
  */
 export function useAddressLabel(address: string | null | undefined, hint?: AddressLabel | null): ResolvedLabel | null {
   const key = address?.toLowerCase() ?? '';
-  const curated = !!getAddressInfo(key);
   const known = hint !== undefined ? hint : key ? addressLabels.peek(key) : undefined;
 
   useEffect(() => {
@@ -22,7 +20,7 @@ export function useAddressLabel(address: string | null | undefined, hint?: Addre
   const { data } = useQuery({
     queryKey: queryKeys.addressLabel(key),
     queryFn: () => addressLabels.get(key),
-    enabled: !!key && !curated && known === undefined,
+    enabled: !!key && known === undefined,
     staleTime: Infinity,
     gcTime: 30 * 60_000,
     retry: 1,

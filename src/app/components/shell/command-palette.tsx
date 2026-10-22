@@ -3,22 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
-import {
-  Search,
-  Loader2,
-  ArrowRight,
-  Box,
-  FileText,
-  User,
-  Sun,
-  Moon,
-  Link2,
-  Trash2,
-  Clock,
-  LayoutGrid,
-  Command,
-  Coins,
-} from 'lucide-react';
+import { Search, Loader2, ArrowRight, Box, FileText, User, Sun, Moon, Link2, Trash2, Clock, LayoutGrid, Command, Coins, ChevronRight } from 'lucide-react';
 import { cn } from '@/app/components/ui/utils';
 import { api } from '@/app/services/api';
 import { MARKETS_TOKENS, type MarketToken } from '@/app/data/markets-tokens';
@@ -66,6 +51,9 @@ const GROUP_META: Record<Group, { label: string; icon: ReactNode }> = {
 };
 
 const GROUP_ORDER: Group[] = ['chain', 'tokens', 'commands', 'recent', 'pages'];
+/** On a phone there is no keyboard to drive commands with; where you were and where you can go come first. */
+const PHONE_GROUP_ORDER: Group[] = ['chain', 'tokens', 'recent', 'pages', 'commands'];
+const isPhone = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
 const MAX_TOKENS = 6;
 const MAX_RECENT = 5;
 const RECENT_KEY = 'icicle-recent-searches';
@@ -345,7 +333,8 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
     for (const page of PAGES) if (matches(q, page.title, page.subtitle)) out.push(pageItem(page, 'pages'));
 
-    return GROUP_ORDER.flatMap((g) => out.filter((i) => i.group === g));
+    const order = isPhone() ? PHONE_GROUP_ORDER : GROUP_ORDER;
+    return order.flatMap((g) => out.filter((i) => i.group === g));
   }, [query, recent, resolvedTheme, chainItem, tokenItem, pageItem, setTheme, onClose, location.pathname]);
 
   useEffect(() => setActive(0), [items.length, query]);
@@ -428,10 +417,11 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
             {item.subtitle}
           </span>
         </span>
-        <span className="flex items-center gap-3 shrink-0">
+        <span className="hidden md:flex items-center gap-3 shrink-0">
           <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-ice-faint">{item.badge}</span>
           <ArrowRight className={cn('w-4 h-4 transition-opacity', isActive ? 'text-ice-accent opacity-100' : 'opacity-0')} />
         </span>
+        <ChevronRight className="md:hidden w-4 h-4 text-ice-faint shrink-0" />
       </button>,
     );
   });

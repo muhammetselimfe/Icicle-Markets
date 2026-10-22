@@ -17,6 +17,14 @@ import type { NativeBalance, TokenBalance } from '@/app/types/api';
 import { cn } from '@/app/components/ui/utils';
 
 const MAX_TOKENS = 8;
+/** The index has no history before C-Chain mainnet; earlier "first seen" dates are placeholders. */
+const INDEX_EPOCH = Date.parse('2020-09-21T00:00:00Z');
+
+function firstSeen(iso: string | null | undefined): { value: string; sub?: string } {
+  if (!iso) return { value: '—' };
+  if (Date.parse(iso) < INDEX_EPOCH) return { value: '—', sub: 'Older than the index' };
+  return { value: getRelativeTime(iso), sub: formatDate(iso) };
+}
 /** Airdrop spam names itself after a website so holders go there; a real token never does. */
 const SPAM_TOKEN = /https?:\/\/|www\.|\.(com|org|xyz|io|net|app|finance)\b/i;
 
@@ -157,7 +165,7 @@ export function AddressPage() {
           <div className="grid grid-cols-2 gap-3">
             <Stat label="AVAX balance" value={balanceAvax} />
             <Stat label="Transactions" value={native ? native.tx_count.toLocaleString('en-US') : '—'} />
-            <Stat label="First seen" value={native?.first_tx_time ? getRelativeTime(native.first_tx_time) : '—'} sub={native?.first_tx_time ? formatDate(native.first_tx_time) : undefined} />
+            <Stat label="First seen" {...firstSeen(native?.first_tx_time)} />
             <Stat label="Last active" value={native?.last_tx_time ? getRelativeTime(native.last_tx_time) : '—'} sub={native?.last_tx_time ? formatDate(native.last_tx_time) : undefined} />
           </div>
         )}

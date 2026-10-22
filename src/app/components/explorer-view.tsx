@@ -95,7 +95,7 @@ export function ExplorerView() {
         <div className="grid grid-cols-2 gap-3 lg:gap-4">
           <Stat label="Latest block" loading={blocksLoading} value={blocks[0] ? `#${blocks[0].block_number.toLocaleString('en-US')}` : '—'} />
           <Stat label="Block time" loading={blocksLoading && blockTime === null} value={blockTime !== null ? formatBlockTime(blockTime) : '—'} tone="up" />
-          <Stat label="Transactions per second" loading={tpsLoading} value={currentTps ?? '—'} />
+          <Stat label="Txs per second" loading={tpsLoading} value={currentTps ?? '—'} />
           <Stat label="Active validators" loading={validatorsLoading} value={validatorCount.toLocaleString('en-US')} />
         </div>
 
