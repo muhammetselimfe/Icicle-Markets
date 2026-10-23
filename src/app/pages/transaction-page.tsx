@@ -4,6 +4,7 @@ import { ArrowRight, ArrowDown, ChevronDown, ChevronUp, ExternalLink } from 'luc
 import { formatUnits } from 'viem';
 import { DetailHeader } from '@/app/components/shell/page-header';
 import { DetailList, DetailRow, CopyButton, AddressLink, DetailSkeleton, shortHex } from '@/app/components/shell/detail-list';
+import { TokenLogo } from '@/app/components/shell/token-logo';
 import { TransactionTypeIcon, TX_TYPE_LABELS } from '@/app/components/shell/transaction-type';
 import { ErrorState } from '@/app/components/ui/data-states';
 import { useAccount } from 'wagmi';
@@ -38,10 +39,26 @@ function formatTokenAmount(value: string, decimals: number): string {
 
 function Amount({ leg, big }: { leg: TransferLeg; big?: boolean }) {
   const out = leg.direction === 'out';
+  const tone = out ? 'text-ice-text' : 'text-ice-up';
+  if (!big) {
+    return (
+      <span className={cn('font-semibold tabular-nums tracking-[-0.01em] text-[15px]', tone)}>
+        {out ? '−' : '+'}
+        {formatLegAmount(leg.raw, leg.decimals)} {leg.symbol}
+      </span>
+    );
+  }
+  // The logo carries the token; the symbol is a caption so the number stays on one line.
   return (
-    <span className={cn('font-semibold tabular-nums tracking-[-0.01em]', big ? 'text-[28px] md:text-[32px] leading-none' : 'text-[15px]', out ? 'text-ice-text' : 'text-ice-up')}>
-      {out ? '−' : '+'}
-      {formatLegAmount(leg.raw, leg.decimals)} {leg.symbol}
+    <span className="inline-flex items-center gap-3 min-w-0">
+      <TokenLogo symbol={leg.symbol} logoUrl={leg.logoUrl} className="w-9 h-9 md:w-10 md:h-10" />
+      <span className="flex flex-col min-w-0">
+        <span className={cn('font-semibold tabular-nums tracking-[-0.01em] text-[28px] md:text-[32px] leading-none truncate', tone)}>
+          {out ? '−' : '+'}
+          {formatLegAmount(leg.raw, leg.decimals)}
+        </span>
+        <span className="text-ice-muted text-[13px] font-medium mt-1 truncate">{leg.symbol}</span>
+      </span>
     </span>
   );
 }
@@ -139,7 +156,7 @@ export function TransactionPage() {
                 {tx.success ? 'Confirmed' : 'Failed'}
               </span>
             </div>
-            <div className="text-ice-muted text-[14px] truncate">
+            <div className="text-ice-muted text-[14px] line-clamp-2 sm:line-clamp-none sm:truncate">
               {type === 'contract' && method ? `${method} · ` : ''}
               {context} · {getRelativeTime(tx.block_time)}
             </div>
@@ -173,10 +190,13 @@ export function TransactionPage() {
           </div>
         )}
 
-        {(GOT_TYPES.has(type) || GAVE_TYPES.has(type)) && legs.length > 1 && (
+        {GAVE_TYPES.has(type) && outs.length > 1 && (
           <p className="mt-3 text-ice-muted text-[14px]">
-            {GOT_TYPES.has(type) ? 'The wallet called the contract and received' : 'The wallet sent the contract'} {legs.length} assets in one transaction.
+            The wallet sent the contract {outs.length} assets in one transaction{ins.length > 0 ? ' and got a small amount back' : ''}.
           </p>
+        )}
+        {GOT_TYPES.has(type) && ins.length > 1 && (
+          <p className="mt-3 text-ice-muted text-[14px]">The wallet called the contract and received {ins.length} assets in one transaction.</p>
         )}
 
         {type === 'suspicious' && (
@@ -217,7 +237,7 @@ export function TransactionPage() {
           </DetailRow>
         )}
         {tx.method && (
-          <DetailRow label="Method" sub={tx.method.signature ? <span className="font-mono">{tx.method.signature}</span> : undefined}>
+          <DetailRow label="Method" sub={tx.method.signature ? <span className="font-mono break-all">{tx.method.signature}</span> : undefined}>
             <span className="truncate">{method}</span>
             <span className="font-mono text-ice-faint text-[12px] shrink-0">{tx.method.selector}</span>
           </DetailRow>

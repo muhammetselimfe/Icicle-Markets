@@ -18,6 +18,7 @@ import { SegmentedControl } from '@/app/components/shell/segmented-control';
 import { SignInGate } from '@/app/components/shell/sign-in-gate';
 import { EmptyState } from '@/app/components/shell/empty-state';
 import { WalletAvatar } from '@/app/components/shell/wallet-avatar';
+import { TokenLogo } from '@/app/components/shell/token-logo';
 import { TransactionTypeIcon, TX_TYPE_LABELS } from '@/app/components/shell/transaction-type';
 import { ErrorState } from '@/app/components/ui/data-states';
 import { PositionsContent } from '@/app/components/positions-view';
@@ -72,18 +73,6 @@ function formatDate(date: Date): string {
 }
 
 // ── Small pieces ─────────────────────────────────────────────────────────────
-
-function TokenLogo({ symbol, logoUrl, className = 'w-10 h-10' }: { symbol: string; logoUrl?: string; className?: string }) {
-  const [failed, setFailed] = useState(false);
-  if (logoUrl && !failed) {
-    return <img src={logoUrl} alt="" className={cn('rounded-full shrink-0', className)} onError={() => setFailed(true)} />;
-  }
-  return (
-    <span className={cn('rounded-full bg-ice-line/[0.1] flex items-center justify-center text-ice-text text-[13px] font-semibold shrink-0', className)}>
-      {symbol.slice(0, 2)}
-    </span>
-  );
-}
 
 function Change({ value, className }: { value: number; className?: string }) {
   const up = value >= 0;
